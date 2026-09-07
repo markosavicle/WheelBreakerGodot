@@ -1,0 +1,17 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# C# / Mono / .NET ignores
+.mono/
+bin/
+obj/
+*.csproj.user
+*.suo
+*.user
+*.userprefs
+*.pidb
+
+# Operating System files
+.DS_Store
+Thumbs.db
