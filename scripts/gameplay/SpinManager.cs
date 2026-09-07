@@ -22,35 +22,39 @@ public partial class SpinManager : Node
 		{
 			if (WheelData.Hits(bet.Type, bet.Numbers, winningNumber))
 			{
-				scoreGained += Mathf.RoundToInt(bet.ChipsWagered * bet.Payout);
+				// Apply base payout calculation
+				int baseGain = Mathf.RoundToInt(bet.ChipsWagered * bet.Payout);
+				
+				// Apply permanent shop multiplier upgrade
+				int multipliedGain = Mathf.RoundToInt(baseGain * _gameState.GlobalPayoutMultiplier);
+				
+				scoreGained += multipliedGain;
 			}
 		}
 
 		_gameState.Score += scoreGained;
 		_gameState.SpinsRemaining--;
 
-		GetNode<EventBus>("/root/EventBus").EmitSignal(
-			EventBus.SignalName.SpinResolved, winningNumber, scoreGained);
+		GD.Print($"[SpinManager] Spin resolved. Landed on {winningNumber}. Gained {scoreGained}. Total Score: {_gameState.Score}/{_gameState.ScoreGoal}");
 
-		CheckRoundEnd();
-
-		if (_gameState.SpinsRemaining > 0 && _gameState.Score < _gameState.ScoreGoal)
-		{
-			_gameState.StartNewSpin();
-		}
-	}
-
-	private void CheckRoundEnd()
-	{
+		// Emit spin resolved event
 		var eventBus = GetNode<EventBus>("/root/EventBus");
+		eventBus.EmitSignal(EventBus.SignalName.SpinResolved, winningNumber, scoreGained);
 
+		// Check win/loss immediately after updating score and spins
 		if (_gameState.Score >= _gameState.ScoreGoal)
 		{
+			GD.Print("[SpinManager] Score goal reached! Triggering RoundWon.");
 			eventBus.EmitSignal(EventBus.SignalName.RoundWon);
 		}
 		else if (_gameState.SpinsRemaining <= 0)
 		{
+			GD.Print("[SpinManager] Out of spins! Triggering RoundLost.");
 			eventBus.EmitSignal(EventBus.SignalName.RoundLost);
+		}
+		else
+		{
+			_gameState.StartNewSpin();
 		}
 	}
 }

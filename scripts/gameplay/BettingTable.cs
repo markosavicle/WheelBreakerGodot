@@ -78,28 +78,25 @@ public partial class BettingTable : Control
 			StyleButtonBaseColor(btnZero, 0);
 			_buttonBets[btnZero] = new List<Bet>();
 
-			btnZero.GuiInput -= OnZeroGuiInput;
-			btnZero.GuiInput += OnZeroGuiInput;
+			btnZero.GuiInput += (inputEvent) =>
+			{
+				if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
+				{
+					if (mouseEvent.ButtonIndex == MouseButton.Left)
+					{
+						PlaceBet(BetType.Straight, new List<int> { 0 }, btnZero, 0, true);
+					}
+					else if (mouseEvent.ButtonIndex == MouseButton.Right)
+					{
+						RemoveBetForButton(btnZero, BetType.Straight, new List<int> { 0 }, 0, true);
+					}
+				}
+			};
 		}
 
 		GD.Print("[BettingTable] Professional roulette layout built via updated scene hierarchy.");
 	}
 
-	private void OnZeroGuiInput(InputEvent inputEvent)
-	{
-		if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
-		{
-			var btnZero = GetNode<Button>("TableLayout/NumberAndZeroBox/ZeroButton");
-			if (mouseEvent.ButtonIndex == MouseButton.Left)
-			{
-				PlaceBet(BetType.Straight, new List<int> { 0 }, btnZero, 0, true);
-			}
-			else if (mouseEvent.ButtonIndex == MouseButton.Right)
-			{
-				RemoveBetForButton(btnZero, BetType.Straight, new List<int> { 0 }, 0, true);
-			}
-		}
-	}
 
 	private void StyleButtonBaseColor(Button btn, int number)
 	{
@@ -331,6 +328,13 @@ private void SetupOutsideButton(string path, BetType type, List<int> numbers, st
 	{
 		GD.Print("[BettingTable] Repeating last round's bets...");
 		
+		// 1. REFUND existing active bets before clearing them out
+		foreach (var bet in _gameState.ActiveBets)
+		{
+			_gameState.ChipsRemainingThisSpin += bet.ChipsWagered;
+		}
+
+		// 2. Clear visual buttons and active list
 		foreach (var kvp in _buttonBets)
 		{
 			kvp.Value.Clear();
@@ -357,6 +361,7 @@ private void SetupOutsideButton(string path, BetType type, List<int> numbers, st
 		}
 		_gameState.ActiveBets.Clear();
 
+		// 3. Apply cached last round bets
 		foreach (var bet in _lastRoundBets)
 		{
 			if (_gameState.ChipsRemainingThisSpin < bet.ChipsWagered)
