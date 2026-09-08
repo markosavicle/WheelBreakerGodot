@@ -9,10 +9,12 @@ public partial class InventoryPanel : Control
 	public override void _Ready()
 	{
 		_gameState = GetNode<GameState>("/root/GameState");
-		_upgradesList = GetNode<VBoxContainer>("UpgradesList");
-		_jokersList = GetNode<VBoxContainer>("JokersList");
+		
+		// Updated node paths matching the CenterContainer/PanelBackground layout in Main.tscn
+		_upgradesList = GetNode<VBoxContainer>("CenterContainer/PanelBackground/UpgradesList");
+		_jokersList = GetNode<VBoxContainer>("CenterContainer/PanelBackground/JokersList");
 
-		var closeButton = GetNodeOrNull<Button>("CloseButton");
+		var closeButton = GetNodeOrNull<Button>("CenterContainer/PanelBackground/CloseButton");
 		if (closeButton != null) closeButton.Pressed += () => Visible = false;
 
 		var eventBus = GetNodeOrNull<EventBus>("/root/EventBus");
@@ -35,6 +37,8 @@ public partial class InventoryPanel : Control
 
 	private void RefreshLists()
 	{
+		if (_upgradesList == null || _jokersList == null) return;
+
 		foreach (Node child in _upgradesList.GetChildren()) child.QueueFree();
 		foreach (Node child in _jokersList.GetChildren()) child.QueueFree();
 
