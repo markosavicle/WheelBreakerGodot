@@ -17,32 +17,43 @@ public partial class SpinManager : Node
 	{
 		if (_gameState.SpinsRemaining <= 0) return;
 
-		var boss = _gameState.ActiveBoss;
-		int winningNumber = _rng.RandiRange(0, 36);
+		int winningNumber;
 
-		// Boss: single-number rig.
-		if (boss?.ModifyWinningNumber != null)
-			winningNumber = boss.ModifyWinningNumber(_gameState, _gameState.ActiveBets, _rng, winningNumber);
-
-		// Boss: multi-candidate rounds (e.g. "two balls, worse counts").
-		List<int> candidates = new List<int> { winningNumber };
-		if (boss?.GetCandidateWinningNumbers != null)
-			candidates = boss.GetCandidateWinningNumbers(_gameState, _gameState.ActiveBets, _rng, winningNumber);
-
-		if (candidates.Count > 1)
+		// Absolute Debug Override — takes precedence over Bosses and Charms
+		if (_gameState.DebugForcedWinningNumber.HasValue)
 		{
-			winningNumber = candidates.OrderBy(n => CalculateScoreForNumber(n, boss)).First();
-			GD.Print($"[SpinManager] Boss forced worst-of-{candidates.Count}: [{string.Join(",", candidates)}] -> {winningNumber}");
+			winningNumber = _gameState.DebugForcedWinningNumber.Value;
+			_gameState.DebugForcedWinningNumber = null; // consume it once
+			GD.Print($"[SpinManager] 🛠 DEBUG FORCED winning number to: {winningNumber}");
+		}
+		else
+		{
+			var boss = _gameState.ActiveBoss;
+			winningNumber = _rng.RandiRange(0, 36);
+
+			// Boss: single-number rig.
+			if (boss?.ModifyWinningNumber != null)
+				winningNumber = boss.ModifyWinningNumber(_gameState, _gameState.ActiveBets, _rng, winningNumber);
+
+			// Boss: multi-candidate rounds (e.g. "two balls, worse counts").
+			List<int> candidates = new List<int> { winningNumber };
+			if (boss?.GetCandidateWinningNumbers != null)
+				candidates = boss.GetCandidateWinningNumbers(_gameState, _gameState.ActiveBets, _rng, winningNumber);
+
+			if (candidates.Count > 1)
+			{
+				winningNumber = candidates.OrderBy(n => CalculateScoreForNumber(n, boss)).First();
+			}
+
+			// Charms get a say unless debug forced
+			foreach (var charm in _gameState.OwnedCharms)
+			{
+				if (charm.ModifyWinningNumber != null)
+					winningNumber = charm.ModifyWinningNumber(_gameState, _gameState.ActiveBets, _rng, winningNumber);
+			}
 		}
 
-		// Charms get the final say — e.g. Weighted Ball can override even a boss's rigged pick.
-		foreach (var charm in _gameState.OwnedCharms)
-		{
-			if (charm.ModifyWinningNumber != null)
-				winningNumber = charm.ModifyWinningNumber(_gameState, _gameState.ActiveBets, _rng, winningNumber);
-		}
-
-		int scoreGained = CalculateScoreForNumber(winningNumber, boss);
+		int scoreGained = CalculateScoreForNumber(winningNumber, _gameState.ActiveBoss);
 
 		if (scoreGained > _gameState.Stats.HighestScoringSpin)
 			_gameState.Stats.HighestScoringSpin = scoreGained;

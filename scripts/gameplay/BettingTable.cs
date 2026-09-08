@@ -41,8 +41,8 @@ public partial class BettingTable : Control
 		if (_holdTimer >= _repeatInterval)
 		{
 			_holdTimer = 0f;
-			// Accelerate repeating wagering as mouse is held down
-			_repeatInterval = Mathf.Max(0.05f, _repeatInterval * 0.75f);
+			// Rapid acceleration for high chip counts (caps at 0.02s per tick)
+			_repeatInterval = Mathf.Max(0.02f, _repeatInterval * 0.5f);
 
 			BetType type = _buttonBetType[_heldButton];
 			bool isStraight = type == BetType.Straight;
@@ -437,7 +437,7 @@ public partial class BettingTable : Control
 		_gameState.ActiveBets.Clear();
 		GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.BetPlaced);
 	}
-	// Call this inside `_Process` or `ApplyBossRestrictions` to keep tooltips updated
+
 	private void RefreshTooltips()
 	{
 		foreach (var kvp in _buttonBetType)
@@ -449,10 +449,9 @@ public partial class BettingTable : Control
 
 			if (IsBetTypeBlockedByBoss(type))
 			{
-				tooltip += $"\n\n[BLOCKED] by {_gameState.ActiveBoss.Name}";
+				tooltip += $"\n\n[BLOCKED] by {_gameState.ActiveBoss?.Name}";
 			}
 			
-			// Show active charm interactions
 			if (type != BetType.Straight && _gameState.OwnedCharms.Any(c => c.Id == "velvet_felt"))
 				tooltip += "\n[BUFF] +15 Score (Velvet Felt)";
 			if (type == BetType.Straight && _gameState.OwnedCharms.Any(c => c.Id == "loaded_dice"))
@@ -463,5 +462,4 @@ public partial class BettingTable : Control
 			btn.TooltipText = tooltip;
 		}
 	}
-	
 }

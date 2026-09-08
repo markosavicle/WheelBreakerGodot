@@ -21,6 +21,7 @@ public partial class HUD : Control
 
 	// Admin Debug Overlay
 	private PanelContainer _debugPanel;
+	private LineEdit _debugNumberInput;
 
 	public override void _Ready()
 	{
@@ -32,6 +33,17 @@ public partial class HUD : Control
 
 		var inventoryButton = GetNodeOrNull<Button>("InventoryButton");
 		if (inventoryButton != null) inventoryButton.Pressed += () => _inventoryPanel?.ToggleVisibility();
+
+		var clearBetsButton = GetNodeOrNull<Button>("../ClearBetsButton");
+		if (clearBetsButton != null)
+		{
+			clearBetsButton.Pressed += () =>
+			{
+				if (_isRoundOver) return;
+				_bettingTable?.ClearAllBets();
+				RefreshLabels();
+			};
+		}
 
 		_resultPopup = GetNodeOrNull<Control>("OverlayLayer/ResultPopup");
 		_titleLabel = GetNodeOrNull<Label>("OverlayLayer/ResultPopup/TitleLabel");
@@ -90,7 +102,6 @@ public partial class HUD : Control
 	{
 		if (@event is InputEventKey keyEvent && keyEvent.Pressed)
 		{
-			// Press F12 or `~` (QuoteLeft) to toggle Admin Debug Panel
 			if (keyEvent.Keycode == Key.F12 || keyEvent.Keycode == Key.Quoteleft)
 			{
 				if (_debugPanel != null) _debugPanel.Visible = !_debugPanel.Visible;
@@ -103,21 +114,20 @@ public partial class HUD : Control
 		_debugPanel = new PanelContainer();
 		_debugPanel.Name = "AdminDebugPanel";
 		_debugPanel.Visible = false;
-		_debugPanel.CustomMinimumSize = new Vector2(280, 200);
-		_debugPanel.SetPosition(new Vector2(15, 210));
+		_debugPanel.CustomMinimumSize = new Vector2(280, 260);
+		_debugPanel.SetPosition(new Vector2(15, 250));
 
 		var vbox = new VBoxContainer();
 		vbox.AddThemeConstantOverride("separation", 6);
 
-		var title = new Label { Text = "🛠 ADMIN DEBUG PANEL (F12)" };
-		vbox.AddChild(title);
+		vbox.AddChild(new Label { Text = "🛠 ADMIN DEBUG PANEL (F12)" });
 
 		var addCashBtn = new Button { Text = "+$100 Cash" };
 		addCashBtn.Pressed += () => { _gameState.Cash += 100; RefreshLabels(); };
 		vbox.AddChild(addCashBtn);
 
-		var addChipsBtn = new Button { Text = "+50 Chips This Spin" };
-		addChipsBtn.Pressed += () => { _gameState.ChipsRemainingThisSpin += 50; RefreshLabels(); };
+		var addChipsBtn = new Button { Text = "+200 Chips This Spin" };
+		addChipsBtn.Pressed += () => { _gameState.ChipsRemainingThisSpin += 200; RefreshLabels(); };
 		vbox.AddChild(addChipsBtn);
 
 		var winRoundBtn = new Button { Text = "Force Clear Round Goal" };
@@ -128,6 +138,23 @@ public partial class HUD : Control
 		clearBossBtn.Pressed += () => { _gameState.ActiveBoss = null; RefreshLabels(); };
 		vbox.AddChild(clearBossBtn);
 
+		var rigBox = new HBoxContainer();
+		rigBox.AddChild(new Label { Text = "Rigged Num (0-36):" });
+		_debugNumberInput = new LineEdit { Text = "7", CustomMinimumSize = new Vector2(50, 30) };
+		rigBox.AddChild(_debugNumberInput);
+		vbox.AddChild(rigBox);
+
+		var setRigBtn = new Button { Text = "Force Next Spin Outcome" };
+		setRigBtn.Pressed += () =>
+		{
+			if (int.TryParse(_debugNumberInput.Text, out int targetNum) && targetNum >= 0 && targetNum <= 36)
+			{
+				_gameState.DebugForcedWinningNumber = targetNum;
+				GD.Print($"[Debug] Next spin forced to land on: {targetNum}");
+			}
+		};
+		vbox.AddChild(setRigBtn);
+
 		_debugPanel.AddChild(vbox);
 		AddChild(_debugPanel);
 	}
@@ -136,9 +163,9 @@ public partial class HUD : Control
 	{
 		var stats = _gameState.Stats;
 		return $"Rounds Survived: {stats.RoundsSurvived}\n" +
-			   $"Total Cash Earned: ${stats.TotalCashEarned}\n" +
-			   $"Highest Scoring Spin: {stats.HighestScoringSpin}\n" +
-			   $"Total Bets Placed: {stats.TotalBetsPlaced}";
+			$"Total Cash Earned: ${stats.TotalCashEarned}\n" +
+			$"Highest Scoring Spin: {stats.HighestScoringSpin}\n" +
+			$"Total Bets Placed: {stats.TotalBetsPlaced}";
 	}
 
 	private void OnBetPlacedSignal()
@@ -185,8 +212,6 @@ public partial class HUD : Control
 		if (_gameState.IsFinalBossRound)
 		{
 			int totalEarned = _gameState.GrantRoundCashReward();
-			GD.Print($"[GameState] FINAL BOSS DEFEATED! Earned ${totalEarned}.");
-
 			if (_titleLabel != null) _titleLabel.Text = "YOU BEAT THE HOUSE!";
 			if (_statsLabel != null) _statsLabel.Text = BuildStatsSummary();
 			if (_continueRestartButton != null) _continueRestartButton.Text = "Start New Run";
@@ -216,7 +241,6 @@ public partial class HUD : Control
 	private void OnPopupActionPressed()
 	{
 		if (_gameState == null) return;
-
 		bool won = _gameState.Score >= _gameState.ScoreGoal;
 
 		if (won && _gameState.IsFinalBossRound)
@@ -229,7 +253,6 @@ public partial class HUD : Control
 		else if (won)
 		{
 			int totalEarned = _gameState.GrantRoundCashReward();
-			GD.Print($"[GameState] Round {_gameState.RoundNumber} Cleared! Earned {totalEarned} Cash.");
 			if (_resultPopup != null) _resultPopup.Visible = false;
 			OpenShop();
 		}
@@ -291,7 +314,8 @@ public partial class HUD : Control
 			if (_gameState.ActiveBoss != null)
 			{
 				_bossLabel.Visible = true;
-				_bossLabel.Text = $"⚠ {_gameState.ActiveBoss.Name} — {_gameState.ActiveBoss.Description}";
+				_bossLabel.Text = $"⚠ Boss: {_gameState.ActiveBoss.Name} (Hover)";
+				_bossLabel.TooltipText = $"{_gameState.ActiveBoss.Name}\n{_gameState.ActiveBoss.Description}";
 			}
 			else
 			{

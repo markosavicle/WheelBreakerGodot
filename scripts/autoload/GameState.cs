@@ -4,13 +4,12 @@ using System.Linq;
 
 public partial class GameState : Node
 {
-	// Stake/Round structure — 2 normal rounds + 1 boss round per Stake, 8 Stakes to win the run.
 	public const int RoundsPerStake = 3;
 	public const int TotalStakes = 8;
 
-	public int RoundNumber = 1;      // global counter, 1..24
-	public int Stake = 1;            // 1..8
-	public int RoundInStake = 1;     // 1, 2, or 3 (3 = boss round)
+	public int RoundNumber = 1;
+	public int Stake = 1;
+	public int RoundInStake = 1;
 
 	public BossDefinition ActiveBoss;
 	public bool IsFinalBossRound => Stake >= TotalStakes && RoundInStake >= RoundsPerStake;
@@ -33,6 +32,9 @@ public partial class GameState : Node
 	public int BonusChipsPerSpin = 0;
 	public int BonusSpinsPerRound = 0;
 	public float GlobalPayoutMultiplier = 1.0f;
+
+	// Admin Debug Support Property
+	public int? DebugForcedWinningNumber = null;
 
 	public RunStats Stats = new RunStats();
 
@@ -72,7 +74,6 @@ public partial class GameState : Node
 	{
 		int baseChips = ChipsPerSpin + BonusChipsPerSpin;
 
-		// Croupier Gloves bonus: +20 chips if current score is below half goal
 		if (OwnedCharms.Any(c => c.Id == "croupier_gloves") && Score < (ScoreGoal / 2))
 		{
 			baseChips += 20;
