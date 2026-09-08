@@ -25,12 +25,15 @@ public partial class GameState : Node
 	public int BonusSpinsPerRound = 0;
 	public float GlobalPayoutMultiplier = 1.0f;
 	
+	public int RerollCostDiscount = 0;
+	
 	public RunStats Stats = new RunStats();
 
 	public List<Bet> ActiveBets = new List<Bet>();
 	
-	public List<JokerDefinition> OwnedJokers = new List<JokerDefinition>();
-	public int MaxJokerSlots = 5;
+	// Replace OwnedCharms / MaxCharmSlots with Charms
+public List<CharmDefinition> OwnedCharms = new List<CharmDefinition>();
+public int MaxCharmSlots = 5;
 	public List<UpgradeDefinition> OwnedUpgrades = new List<UpgradeDefinition>();
 
 	public override void _Ready()
@@ -69,8 +72,9 @@ public partial class GameState : Node
 		GlobalPayoutMultiplier = 1.0f;
 		CashPerRemainingSpin = 10;   // ← add: reset to base
 		FlatRoundReward = 25;        // ← add: reset to base
+		RerollCostDiscount = 0;
 		
-		OwnedJokers.Clear();
+		OwnedCharms.Clear();
 		OwnedUpgrades.Clear();
 		
 
@@ -83,10 +87,10 @@ public partial class GameState : Node
 			int bonusCash = SpinsRemaining * CashPerRemainingSpin;
 			int totalEarned = FlatRoundReward + bonusCash;
 
-			foreach (var joker in OwnedJokers)
+			foreach (var charm in OwnedCharms)
 			{
-				if (joker.ModifyRoundCashReward != null)
-					totalEarned = joker.ModifyRoundCashReward(this, totalEarned);
+				if (charm.ModifyRoundCashReward != null)
+					totalEarned = charm.ModifyRoundCashReward(this, totalEarned);
 			}
 
 			Stats.TotalCashEarned += totalEarned;
@@ -98,10 +102,10 @@ public partial class GameState : Node
 	public int GetModifiedUpgradeCost(int baseCost)
 		{
 			int cost = baseCost;
-			foreach (var joker in OwnedJokers)
+			foreach (var charm in OwnedCharms)
 			{
-				if (joker.ModifyUpgradeCost != null)
-					cost = joker.ModifyUpgradeCost(this, cost);
+				if (charm.ModifyUpgradeCost != null)
+					cost = charm.ModifyUpgradeCost(this, cost);
 			}
 			return cost;
 		}

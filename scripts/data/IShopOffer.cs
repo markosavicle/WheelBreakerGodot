@@ -1,5 +1,5 @@
 // Common shape for anything the shop can offer — lets ShopManager roll
-// upgrades and jokers from one unified pool without type-specific logic.
+// upgrades and charms from one unified pool without type-specific logic.
 public interface IShopOffer
 {
 	string Id { get; }

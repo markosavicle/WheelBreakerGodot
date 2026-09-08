@@ -16,7 +16,7 @@ public partial class ShopManager : Control
 	private List<IShopOffer> _currentOffers = new List<IShopOffer>();
 	private RandomNumberGenerator _rng = new RandomNumberGenerator();
 
-	private int CurrentRerollCost => BaseRerollCost + (_rerollCount * RerollCostStep);
+	private int CurrentRerollCost => Mathf.Max(1, BaseRerollCost + (_rerollCount * RerollCostStep) - _gameState.RerollCostDiscount);
 
 	public override void _Ready()
 	{
@@ -36,14 +36,14 @@ public partial class ShopManager : Control
 
 	private List<IShopOffer> BuildAvailablePool()
 	{
-		var ownedJokerIds = _gameState.OwnedJokers.Select(j => j.Id).ToHashSet();
-		bool jokerSlotsFull = _gameState.OwnedJokers.Count >= _gameState.MaxJokerSlots;
+		var ownedCharmIds = _gameState.OwnedCharms.Select(j => j.Id).ToHashSet();
+		bool charmSlotsFull = _gameState.OwnedCharms.Count >= _gameState.MaxCharmSlots;
 
 		var pool = new List<IShopOffer>();
 		pool.AddRange(UpgradePool.All);
 
-		if (!jokerSlotsFull)
-			pool.AddRange(JokerPool.All.Where(j => !ownedJokerIds.Contains(j.Id)));
+		if (!charmSlotsFull)
+			pool.AddRange(CharmPool.All.Where(j => !ownedCharmIds.Contains(j.Id)));
 
 		return pool;
 	}
@@ -86,9 +86,9 @@ public partial class ShopManager : Control
 			return;
 		}
 
-		if (offer is JokerDefinition && _gameState.OwnedJokers.Count >= _gameState.MaxJokerSlots)
+		if (offer is CharmDefinition && _gameState.OwnedCharms.Count >= _gameState.MaxCharmSlots)
 		{
-			GD.Print("[Shop] Joker slots full — cannot purchase.");
+			GD.Print("[Shop] Charm slots full — cannot purchase.");
 			return;
 		}
 
@@ -100,8 +100,8 @@ public partial class ShopManager : Control
 				upgrade.Apply(_gameState);
 				_gameState.OwnedUpgrades.Add(upgrade);
 				break;
-			case JokerDefinition jokerDef:
-				_gameState.OwnedJokers.Add(jokerDef);
+			case CharmDefinition charmDef:
+				_gameState.OwnedCharms.Add(charmDef);
 				break;
 		}
 
@@ -120,7 +120,7 @@ public partial class ShopManager : Control
 			int displayCost = offer is UpgradeDefinition
 				? _gameState.GetModifiedUpgradeCost(offer.BaseCost)
 				: offer.BaseCost;
-			string tag = offer is JokerDefinition ? "[JOKER] " : "";
+			string tag = offer is CharmDefinition ? "[CHARM] " : "";
 
 			var btn = new Button();
 			btn.Text = $"{tag}{offer.Name}\n{offer.Description}\n${displayCost}";

@@ -113,8 +113,8 @@ public partial class HUD : Control
 			eventBus.Connect(EventBus.SignalName.SpinResolved, new Callable(this, nameof(OnSpinResolved)));
 			eventBus.Connect(EventBus.SignalName.RoundWon, new Callable(this, nameof(OnRoundWon)));
 			eventBus.Connect(EventBus.SignalName.RoundLost, new Callable(this, nameof(OnRoundLost)));
+			eventBus.Connect(EventBus.SignalName.ShopUpdated, new Callable(this, nameof(RefreshLabels)));
 		}
-		eventBus.Connect(EventBus.SignalName.ShopUpdated, new Callable(this, nameof(RefreshLabels)));
 
 		RefreshLabels();
 	}
@@ -285,8 +285,8 @@ public partial class HUD : Control
 		// Update shop cash display too
 		if (shopCashLabel != null) shopCashLabel.Text = $"Available Cash: ${_gameState.Cash}";
 		
-		var jokerSlotsLabel = GetNodeOrNull<Label>("JokerSlotsLabel");
-		if (jokerSlotsLabel != null) jokerSlotsLabel.Text = $"Jokers: {_gameState.OwnedJokers.Count}/{_gameState.MaxJokerSlots}";
+		var charmSlotsLabel = GetNodeOrNull<Label>("CharmSlotsLabel");
+		if (charmSlotsLabel != null) charmSlotsLabel.Text = $"Charms: {_gameState.OwnedCharms.Count}/{_gameState.MaxCharmSlots}";
 		
 		GD.Print($"[HUD] Labels refreshed -> Round: {_gameState.RoundNumber} | Cash: ${_gameState.Cash} | Chips: {_gameState.ChipsRemainingThisSpin} | Spins: {_gameState.SpinsRemaining} | Score: {_gameState.Score}/{_gameState.ScoreGoal}");
 	}
