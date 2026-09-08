@@ -5,6 +5,9 @@ public partial class HUD : Control
 	private GameState _gameState;
 	private SpinManager _spinManager;
 	private BettingTable _bettingTable;
+	private ShopManager _shopManager;
+	private InventoryPanel _inventoryPanel;
+	private Label _statsLabel;
 
 	private Control _resultPopup;
 	private Label _titleLabel;
@@ -35,11 +38,24 @@ public partial class HUD : Control
 		{
 			GD.PrintErr("[HUD] ERROR: BettingTable node not found at ../BettingTable!");
 		}
+		
+		_shopManager = GetNodeOrNull<ShopManager>("OverlayLayer/ShopPanel");
+		if (_shopManager == null)
+		{
+			GD.PrintErr("[HUD] ERROR: _shopManager node not found at OverlayLayer/ShopPanel");
+		}
+		
+		_inventoryPanel = GetNodeOrNull<InventoryPanel>("OverlayLayer/InventoryPanel");
+
+		var inventoryButton = GetNodeOrNull<Button>("InventoryButton");
+		if (inventoryButton != null)
+		inventoryButton.Pressed += () => _inventoryPanel?.ToggleVisibility();
 
 		// Result Popup nodes
 		_resultPopup = GetNodeOrNull<Control>("OverlayLayer/ResultPopup");
 		_titleLabel = GetNodeOrNull<Label>("OverlayLayer/ResultPopup/TitleLabel");
 		_continueRestartButton = GetNodeOrNull<Button>("OverlayLayer/ResultPopup/ContinueRestartButton");
+		_statsLabel = GetNodeOrNull<Label>("OverlayLayer/ResultPopup/StatsLabel");
 
 		if (_resultPopup != null) 
 		{
@@ -98,32 +114,18 @@ public partial class HUD : Control
 			eventBus.Connect(EventBus.SignalName.RoundWon, new Callable(this, nameof(OnRoundWon)));
 			eventBus.Connect(EventBus.SignalName.RoundLost, new Callable(this, nameof(OnRoundLost)));
 		}
-		
-		var buySpinBtn = GetNodeOrNull<Button>("OverlayLayer/ShopPanel/ShopItems/BuySpinButton");
-		if (buySpinBtn != null)
-		{
-			buySpinBtn.Pressed += () => {
-				if (_gameState.TryBuyUpgrade("ExtraSpin", 15)) RefreshLabels();
-			};
-		}
-
-		var buyChipsBtn = GetNodeOrNull<Button>("OverlayLayer/ShopPanel/ShopItems/BuyChipsButton");
-		if (buyChipsBtn != null)
-		{
-			buyChipsBtn.Pressed += () => {
-				if (_gameState.TryBuyUpgrade("ChipBoost", 20)) RefreshLabels();
-			};
-		}
-
-		var buyMultiplierBtn = GetNodeOrNull<Button>("OverlayLayer/ShopPanel/ShopItems/BuyMultiplierButton");
-		if (buyMultiplierBtn != null)
-		{
-			buyMultiplierBtn.Pressed += () => {
-				if (_gameState.TryBuyUpgrade("PayoutBoost", 30)) RefreshLabels();
-			};
-		}
+		eventBus.Connect(EventBus.SignalName.ShopUpdated, new Callable(this, nameof(RefreshLabels)));
 
 		RefreshLabels();
+	}
+
+	private string BuildStatsSummary()
+	{
+		var stats = _gameState.Stats;
+		return $"Rounds Survived: {stats.RoundsSurvived}\n" +
+			   $"Total Cash Earned: ${stats.TotalCashEarned}\n" +
+			   $"Highest Scoring Spin: {stats.HighestScoringSpin}\n" +
+			   $"Total Bets Placed: {stats.TotalBetsPlaced}";
 	}
 
 	private void OnBetPlacedSignal()
@@ -195,10 +197,15 @@ public partial class HUD : Control
 		{
 			_resultPopup.Visible = true;
 			_resultPopup.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-			
+
 			if (_titleLabel != null)
 			{
 				_titleLabel.Text = "GAME OVER";
+			}
+
+			if (_statsLabel != null)
+			{
+				_statsLabel.Text = BuildStatsSummary();   // ← add this block
 			}
 
 			if (_continueRestartButton != null)
@@ -214,11 +221,7 @@ public partial class HUD : Control
 
 		if (_gameState.Score >= _gameState.ScoreGoal)
 		{
-			// WIN -> Bank cash reward and open Shop panel
-			int bonusCash = _gameState.SpinsRemaining * _gameState.CashPerRemainingSpin;
-			int totalEarned = _gameState.FlatRoundReward + bonusCash;
-			_gameState.Cash += totalEarned;
-
+			int totalEarned = _gameState.GrantRoundCashReward();
 			GD.Print($"[GameState] Round {_gameState.RoundNumber} Cleared! Earned {totalEarned} Cash. Total Cash: {_gameState.Cash}");
 
 			if (_resultPopup != null) _resultPopup.Visible = false;
@@ -243,6 +246,7 @@ public partial class HUD : Control
 			_shopPanel.Visible = true;
 			_shopPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
 		}
+		_shopManager?.OpenShop();   // ← add this line
 		RefreshLabels();
 	}
 
@@ -280,6 +284,9 @@ public partial class HUD : Control
 		
 		// Update shop cash display too
 		if (shopCashLabel != null) shopCashLabel.Text = $"Available Cash: ${_gameState.Cash}";
+		
+		var jokerSlotsLabel = GetNodeOrNull<Label>("JokerSlotsLabel");
+		if (jokerSlotsLabel != null) jokerSlotsLabel.Text = $"Jokers: {_gameState.OwnedJokers.Count}/{_gameState.MaxJokerSlots}";
 		
 		GD.Print($"[HUD] Labels refreshed -> Round: {_gameState.RoundNumber} | Cash: ${_gameState.Cash} | Chips: {_gameState.ChipsRemainingThisSpin} | Spins: {_gameState.SpinsRemaining} | Score: {_gameState.Score}/{_gameState.ScoreGoal}");
 	}

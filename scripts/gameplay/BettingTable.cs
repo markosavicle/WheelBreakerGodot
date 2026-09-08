@@ -263,6 +263,7 @@ private void SetupOutsideButton(string path, BetType type, List<int> numbers, st
 		string targetStr = numbers != null ? string.Join(", ", numbers) : type.ToString();
 		GD.Print($"[BettingTable] BET PLACED -> Type: {type}, Target(s): [{targetStr}], Chips Wagered: {DefaultChipsPerClick}, Chips Remaining: {_gameState.ChipsRemainingThisSpin}");
 
+		_gameState.Stats.TotalBetsPlaced++;
 		GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.BetPlaced);
 	}
 
@@ -372,6 +373,7 @@ private void SetupOutsideButton(string path, BetType type, List<int> numbers, st
 
 			_gameState.ActiveBets.Add(new Bet(bet.Type, bet.Numbers, bet.ChipsWagered, bet.Payout));
 			_gameState.ChipsRemainingThisSpin -= bet.ChipsWagered;
+			_gameState.Stats.TotalBetsPlaced++;
 
 			foreach (var kvp in _buttonBets)
 			{

@@ -24,8 +24,14 @@ public partial class GameState : Node
 	public int BonusChipsPerSpin = 0;
 	public int BonusSpinsPerRound = 0;
 	public float GlobalPayoutMultiplier = 1.0f;
+	
+	public RunStats Stats = new RunStats();
 
 	public List<Bet> ActiveBets = new List<Bet>();
+	
+	public List<JokerDefinition> OwnedJokers = new List<JokerDefinition>();
+	public int MaxJokerSlots = 5;
+	public List<UpgradeDefinition> OwnedUpgrades = new List<UpgradeDefinition>();
 
 	public override void _Ready()
 	{
@@ -53,56 +59,59 @@ public partial class GameState : Node
 	
 	public void ResetRun()
 	{
+		Stats = new RunStats();
+		
 		RoundNumber = 1;
 		Cash = 0;
-		
-		// Reset all shop upgrades back to default starting values
+
 		BonusSpinsPerRound = 0;
 		BonusChipsPerSpin = 0;
 		GlobalPayoutMultiplier = 1.0f;
+		CashPerRemainingSpin = 10;   // ← add: reset to base
+		FlatRoundReward = 25;        // ← add: reset to base
+		
+		OwnedJokers.Clear();
+		OwnedUpgrades.Clear();
+		
 
 		StartNewRound();
 		GD.Print("[GameState] Run reset completely — all cash and upgrades wiped.");
 	}
+	
+		public int GrantRoundCashReward()
+		{
+			int bonusCash = SpinsRemaining * CashPerRemainingSpin;
+			int totalEarned = FlatRoundReward + bonusCash;
+
+			foreach (var joker in OwnedJokers)
+			{
+				if (joker.ModifyRoundCashReward != null)
+					totalEarned = joker.ModifyRoundCashReward(this, totalEarned);
+			}
+
+			Stats.TotalCashEarned += totalEarned;
+			
+			Cash += totalEarned;
+			return totalEarned;
+		}
+	
+	public int GetModifiedUpgradeCost(int baseCost)
+		{
+			int cost = baseCost;
+			foreach (var joker in OwnedJokers)
+			{
+				if (joker.ModifyUpgradeCost != null)
+					cost = joker.ModifyUpgradeCost(this, cost);
+			}
+			return cost;
+		}
 
 	public void AdvanceToNextRound()
 	{
-		// Calculate cash reward: Flat amount + bonus for remaining spins
-		int bonusCash = SpinsRemaining * CashPerRemainingSpin;
-		int totalEarned = FlatRoundReward + bonusCash;
-		Cash += totalEarned;
-
-		GD.Print($"[GameState] Round {RoundNumber} Cleared! Earned {totalEarned} Cash ({FlatRoundReward} base + {bonusCash} unspent spin bonus). Total Cash: {Cash}");
-
+		// Cash is now granted once, in GrantRoundCashReward() — called from HUD when the round is won.
+		Stats.RoundsSurvived++;
 		RoundNumber++;
 		StartNewRound();
 	}
 	
-	public bool TryBuyUpgrade(string upgradeName, int cost)
-	{
-		if (Cash < cost)
-		{
-			GD.Print($"[GameState] Not enough cash to buy {upgradeName}. Cost: ${cost}, Have: ${Cash}");
-			return false;
-		}
-
-		Cash -= cost;
-
-		switch (upgradeName)
-		{
-			case "ExtraSpin":
-				BonusSpinsPerRound += 1;
-				GD.Print("[GameState] Upgraded: +1 Max Spin per round!");
-				break;
-			case "ChipBoost":
-				BonusChipsPerSpin += 10;
-				GD.Print("[GameState] Upgraded: +10 Chips per spin!");
-				break;
-			case "PayoutBoost":
-				GlobalPayoutMultiplier += 0.25f;
-				GD.Print("[GameState] Upgraded: +0.25x Payout Multiplier!");
-				break;
-		}
-		return true;
-	}
 }
