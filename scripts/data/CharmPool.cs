@@ -11,7 +11,10 @@ public static class CharmPool
 		CreateWeightedBall(),
 		CreateVelvetFelt(),
 		CreateDealerVisor(),
-		CreateLoadedDice()
+		CreateLoadedDice(),
+		CreateRouletteTableMat(),
+		CreateCroupierGloves(),
+		CreateMidnightOil()
 	};
 
 	private static CharmDefinition CreateLuckyHorseshoe()
@@ -74,7 +77,6 @@ public static class CharmPool
 			if (coveredNumbers.Count == 0) return standardWinningNumber;
 
 			int rigged = coveredNumbers[rng.RandiRange(0, coveredNumbers.Count - 1)];
-			GD.Print($"[Charm] Weighted Ball triggered — rigged winning number to: {rigged}");
 			return rigged;
 		};
 
@@ -84,11 +86,11 @@ public static class CharmPool
 	private static CharmDefinition CreateVelvetFelt()
 	{
 		var j = new CharmDefinition("velvet_felt", "Velvet Felt",
-			"Outside bets (Red, Black, Odd, Even, Doz) give +10 extra score per winning bet.", 25);
+			"Outside bets (Red, Black, Odd, Even, Doz) give +15 extra score per winning bet.", 25);
 		j.ModifyBetScore = (gs, bet, winningNumber, baseScore) =>
 		{
 			if (bet.Type != BetType.Straight)
-				return baseScore + 10;
+				return baseScore + 15;
 			return baseScore;
 		};
 		return j;
@@ -105,14 +107,35 @@ public static class CharmPool
 	private static CharmDefinition CreateLoadedDice()
 	{
 		var j = new CharmDefinition("loaded_dice", "Loaded Dice",
-			"Straight bets give 1.25x more score, but outside bets give 20% fewer points.", 40);
+			"Straight bets give 1.3x more score, but outside bets give 20% fewer points.", 35);
 		j.ModifyBetScore = (gs, bet, winningNumber, baseScore) =>
 		{
 			if (bet.Type == BetType.Straight)
-				return Mathf.RoundToInt(baseScore * 1.25f);
+				return Mathf.RoundToInt(baseScore * 1.3f);
 			else
 				return Mathf.RoundToInt(baseScore * 0.8f);
 		};
+		return j;
+	}
+
+	private static CharmDefinition CreateRouletteTableMat()
+	{
+		var j = new CharmDefinition("table_mat", "Felt Table Mat",
+			"Increases global payout multiplier by +0.1x for every charm currently owned.", 40);
+		return j;
+	}
+
+	private static CharmDefinition CreateCroupierGloves()
+	{
+		var j = new CharmDefinition("croupier_gloves", "Croupier's Gloves",
+			"Gain +20 extra chips per spin if your current score is below half the goal.", 35);
+		return j;
+	}
+
+	private static CharmDefinition CreateMidnightOil()
+	{
+		var j = new CharmDefinition("midnight_oil", "Midnight Oil",
+			"The final spin of every round grants double score if it hits.", 45);
 		return j;
 	}
 }

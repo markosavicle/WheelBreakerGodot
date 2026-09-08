@@ -40,7 +40,7 @@ script = ExtResource("1_rvslj")
 layout_mode = 0
 offset_left = 15.0
 offset_top = 20.0
-offset_right = 115.0
+offset_right = 150.0
 offset_bottom = 43.0
 text = "Chips: x"
 
@@ -48,7 +48,7 @@ text = "Chips: x"
 layout_mode = 0
 offset_left = 15.0
 offset_top = 50.0
-offset_right = 115.0
+offset_right = 150.0
 offset_bottom = 73.0
 text = "Spins: y"
 
@@ -56,7 +56,7 @@ text = "Spins: y"
 layout_mode = 0
 offset_left = 15.0
 offset_top = 80.0
-offset_right = 135.0
+offset_right = 250.0
 offset_bottom = 103.0
 text = "Score: 0 / z"
 
@@ -64,7 +64,7 @@ text = "Score: 0 / z"
 layout_mode = 0
 offset_left = 15.0
 offset_top = 110.0
-offset_right = 115.0
+offset_right = 250.0
 offset_bottom = 133.0
 text = "Round: 1"
 
@@ -72,7 +72,7 @@ text = "Round: 1"
 layout_mode = 0
 offset_left = 15.0
 offset_top = 140.0
-offset_right = 115.0
+offset_right = 150.0
 offset_bottom = 163.0
 text = "Cash: $0"
 
@@ -80,9 +80,18 @@ text = "Cash: $0"
 layout_mode = 0
 offset_left = 15.0
 offset_top = 180.0
-offset_right = 250.0
+offset_right = 350.0
 offset_bottom = 203.0
 text = "Last Spin: -"
+
+[node name="BossLabel" type="Label" parent="HUD" unique_id=1580651041]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 220.0
+offset_right = 350.0
+offset_bottom = 245.0
+theme_override_colors/font_color = Color(0.95, 0.2, 0.2, 1)
+text = "BOSS"
 
 [node name="CharmsSlotsLabel" type="Label" parent="HUD" unique_id=436212277]
 layout_mode = 0
@@ -246,12 +255,17 @@ offset_bottom = 130.0
 theme_override_font_sizes/font_size = 22
 text = "Upgrades"
 
-[node name="UpgradesList" type="VBoxContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1872596602]
+[node name="UpgradesScroll" type="ScrollContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1111111111]
 layout_mode = 0
 offset_left = 50.0
 offset_top = 135.0
 offset_right = 460.0
 offset_bottom = 470.0
+horizontal_scroll_mode = 0
+
+[node name="UpgradesList" type="VBoxContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground/UpgradesScroll" unique_id=1872596602]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
 [node name="CharmsHeader" type="Label" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1040774111]
@@ -263,12 +277,17 @@ offset_bottom = 130.0
 theme_override_font_sizes/font_size = 22
 text = "Charms"
 
-[node name="CharmsList" type="VBoxContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=597736923]
+[node name="CharmsScroll" type="ScrollContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=-2072745074]
 layout_mode = 0
 offset_left = 500.0
 offset_top = 135.0
 offset_right = 910.0
 offset_bottom = 470.0
+horizontal_scroll_mode = 0
+
+[node name="CharmsList" type="VBoxContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground/CharmsScroll" unique_id=597736923]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
 [node name="CloseButton" type="Button" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=200928555]
@@ -332,6 +351,14 @@ layout_mode = 2
 
 [node name="HighButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=868327758]
 layout_mode = 2
+
+[node name="ClearBetsButton" type="Button" parent="." unique_id=-961633963]
+layout_mode = 0
+offset_left = 934.0
+offset_top = 658.0
+offset_right = 1064.0
+offset_bottom = 689.0
+text = "Clear Bets"
 
 [node name="RepeatBetButton" type="Button" parent="." unique_id=741566659]
 layout_mode = 0

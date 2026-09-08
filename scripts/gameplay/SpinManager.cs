@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 
 public partial class SpinManager : Node
 {
@@ -16,49 +17,40 @@ public partial class SpinManager : Node
 	{
 		if (_gameState.SpinsRemaining <= 0) return;
 
+		var boss = _gameState.ActiveBoss;
 		int winningNumber = _rng.RandiRange(0, 36);
 
-		// Let any owned charm intervene on the winning number, in slot order.
+		// Boss: single-number rig.
+		if (boss?.ModifyWinningNumber != null)
+			winningNumber = boss.ModifyWinningNumber(_gameState, _gameState.ActiveBets, _rng, winningNumber);
+
+		// Boss: multi-candidate rounds (e.g. "two balls, worse counts").
+		List<int> candidates = new List<int> { winningNumber };
+		if (boss?.GetCandidateWinningNumbers != null)
+			candidates = boss.GetCandidateWinningNumbers(_gameState, _gameState.ActiveBets, _rng, winningNumber);
+
+		if (candidates.Count > 1)
+		{
+			winningNumber = candidates.OrderBy(n => CalculateScoreForNumber(n, boss)).First();
+			GD.Print($"[SpinManager] Boss forced worst-of-{candidates.Count}: [{string.Join(",", candidates)}] -> {winningNumber}");
+		}
+
+		// Charms get the final say — e.g. Weighted Ball can override even a boss's rigged pick.
 		foreach (var charm in _gameState.OwnedCharms)
 		{
 			if (charm.ModifyWinningNumber != null)
 				winningNumber = charm.ModifyWinningNumber(_gameState, _gameState.ActiveBets, _rng, winningNumber);
 		}
 
-		int scoreGained = 0;
+		int scoreGained = CalculateScoreForNumber(winningNumber, boss);
 
-		foreach (var bet in _gameState.ActiveBets)
-		{
-			if (WheelData.Hits(bet.Type, bet.Numbers, winningNumber))
-			{
-				int baseGain = Mathf.RoundToInt(bet.ChipsWagered * bet.Payout);
-				int multipliedGain = Mathf.RoundToInt(baseGain * _gameState.GlobalPayoutMultiplier);
-
-				foreach (var charm in _gameState.OwnedCharms)
-				{
-					if (charm.ModifyBetScore != null)
-						multipliedGain = charm.ModifyBetScore(_gameState, bet, winningNumber, multipliedGain);
-				}
-
-				scoreGained += multipliedGain;
-			}
-		}
-
-		foreach (var charm in _gameState.OwnedCharms)
-		{
-			if (charm.OnSpinResolvedBonusScore != null)
-				scoreGained += charm.OnSpinResolvedBonusScore(_gameState, winningNumber);
-		}
-		
 		if (scoreGained > _gameState.Stats.HighestScoringSpin)
-		{
 			_gameState.Stats.HighestScoringSpin = scoreGained;
-		}
 
 		_gameState.Score += scoreGained;
 		_gameState.SpinsRemaining--;
 
-		GD.Print($"[SpinManager] Spin resolved. Landed on {winningNumber}. Gained {scoreGained}. Total Score: {_gameState.Score}/{_gameState.ScoreGoal}");
+		GD.Print($"[SpinManager] Landed on {winningNumber}. Gained {scoreGained}. Score: {_gameState.Score}/{_gameState.ScoreGoal}");
 
 		var eventBus = GetNode<EventBus>("/root/EventBus");
 		eventBus.EmitSignal(EventBus.SignalName.SpinResolved, winningNumber, scoreGained);
@@ -69,5 +61,37 @@ public partial class SpinManager : Node
 			eventBus.EmitSignal(EventBus.SignalName.RoundLost);
 		else
 			_gameState.StartNewSpin();
+	}
+
+	// Pure — no state mutation — so it's safe to call repeatedly when comparing boss candidates.
+	private int CalculateScoreForNumber(int winningNumber, BossDefinition boss)
+	{
+		int total = 0;
+
+		foreach (var bet in _gameState.ActiveBets)
+		{
+			if (!WheelData.Hits(bet.Type, bet.Numbers, winningNumber)) continue;
+
+			int gain = Mathf.RoundToInt(bet.ChipsWagered * bet.Payout * _gameState.GlobalPayoutMultiplier);
+
+			if (boss?.ModifyBetScore != null)
+				gain = boss.ModifyBetScore(_gameState, bet, winningNumber, gain);
+
+			foreach (var charm in _gameState.OwnedCharms)
+			{
+				if (charm.ModifyBetScore != null)
+					gain = charm.ModifyBetScore(_gameState, bet, winningNumber, gain);
+			}
+
+			total += gain;
+		}
+
+		foreach (var charm in _gameState.OwnedCharms)
+		{
+			if (charm.OnSpinResolvedBonusScore != null)
+				total += charm.OnSpinResolvedBonusScore(_gameState, winningNumber);
+		}
+
+		return total;
 	}
 }

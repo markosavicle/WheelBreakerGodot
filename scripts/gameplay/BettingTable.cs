@@ -1,5 +1,6 @@
 using Godot;
 using System.Collections.Generic;
+using System.Linq;
 
 public partial class BettingTable : Control
 {
@@ -7,58 +8,118 @@ public partial class BettingTable : Control
 	[Export] public int DefaultChipsPerClick = 5;
 
 	private List<Bet> _lastRoundBets = new List<Bet>();
-	private Dictionary<Button, List<Bet>> _buttonBets = new Dictionary<Button, List<Bet>>();
+
+	private Dictionary<Button, Bet> _buttonBets = new Dictionary<Button, Bet>();
+	private Dictionary<Button, BetType> _buttonBetType = new Dictionary<Button, BetType>();
+	private Dictionary<Button, string> _buttonBaseLabel = new Dictionary<Button, string>();
+
+	// Hold-to-add/remove state variables
+	private Button _heldButton = null;
+	private bool _isHoldingAdd = false;
+	private float _holdTimer = 0f;
+	private float _repeatInterval = 0.35f;
 
 	public override void _Ready()
 	{
 		_gameState = GetNode<GameState>("/root/GameState");
-		GD.Print("[BettingTable] Initializing BettingTable...");
 		BuildNumberGrid();
 		ConnectOutsideBetButtons();
 
 		var eventBus = GetNode<EventBus>("/root/EventBus");
 		eventBus.Connect(EventBus.SignalName.SpinResolved, new Callable(this, nameof(OnSpinResolved)));
+		eventBus.Connect(EventBus.SignalName.RoundStarted, new Callable(this, nameof(OnRoundStarted)));
+
+		ApplyBossRestrictions();
+		RefreshTooltips();
+	}
+
+	public override void _Process(double delta)
+	{
+		if (_heldButton == null) return;
+
+		_holdTimer += (float)delta;
+		if (_holdTimer >= _repeatInterval)
+		{
+			_holdTimer = 0f;
+			// Accelerate repeating wagering as mouse is held down
+			_repeatInterval = Mathf.Max(0.05f, _repeatInterval * 0.75f);
+
+			BetType type = _buttonBetType[_heldButton];
+			bool isStraight = type == BetType.Straight;
+			int numVal = isStraight && int.TryParse(_buttonBaseLabel[_heldButton], out int n) ? n : -1;
+			Color baseColor = GetOutsideButtonColor(_buttonBaseLabel[_heldButton]);
+
+			if (_isHoldingAdd)
+			{
+				List<int> numbers = isStraight ? new List<int> { numVal } : null;
+				PlaceBet(type, numbers, _heldButton, numVal, isStraight, baseColor);
+			}
+			else
+			{
+				RemoveBetForButton(_heldButton, numVal, isStraight, baseColor);
+			}
+		}
+	}
+
+	private void RegisterHoldEvents(Button btn, System.Action onInitialAdd, System.Action onInitialRemove)
+	{
+		btn.GuiInput += (inputEvent) =>
+		{
+			if (inputEvent is InputEventMouseButton mouseEvent)
+			{
+				if (mouseEvent.Pressed)
+				{
+					_heldButton = btn;
+					_holdTimer = 0f;
+					_repeatInterval = 0.35f;
+
+					if (mouseEvent.ButtonIndex == MouseButton.Left)
+					{
+						_isHoldingAdd = true;
+						onInitialAdd();
+					}
+					else if (mouseEvent.ButtonIndex == MouseButton.Right)
+					{
+						_isHoldingAdd = false;
+						onInitialRemove();
+					}
+				}
+				else
+				{
+					_heldButton = null;
+				}
+			}
+		};
 	}
 
 	private void BuildNumberGrid()
 	{
 		var grid = GetNode<GridContainer>("TableLayout/NumberAndZeroBox/NumberButtons");
-		if (grid == null)
-		{
-			GD.PrintErr("[BettingTable] ERROR: TableLayout/NumberAndZeroBox/NumberButtons not found! Check your scene tree.");
-			return;
-		}
-		
-		foreach (Node child in grid.GetChildren())
-		{
-			child.QueueFree();
-		}
+		if (grid == null) { GD.PrintErr("[BettingTable] ERROR: NumberButtons not found!"); return; }
+
+		foreach (Node child in grid.GetChildren()) child.QueueFree();
 		_buttonBets.Clear();
+		_buttonBetType.Clear();
+		_buttonBaseLabel.Clear();
 
 		grid.Columns = 12;
 
-		Button CreateNumButton(int number, int customWidth = 45, int customHeight = 45)
+		Button CreateNumButton(int number, int w = 45, int h = 45)
 		{
 			var btn = new Button();
-			btn.Text = number.ToString();
-			btn.CustomMinimumSize = new Vector2(customWidth, customHeight);
+			string label = number.ToString();
+			btn.Text = label;
+			btn.CustomMinimumSize = new Vector2(w, h);
 			StyleButtonBaseColor(btn, number);
-			_buttonBets[btn] = new List<Bet>();
 
-			btn.GuiInput += (inputEvent) =>
-			{
-				if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
-				{
-					if (mouseEvent.ButtonIndex == MouseButton.Left)
-					{
-						PlaceBet(BetType.Straight, new List<int> { number }, btn, number, true);
-					}
-					else if (mouseEvent.ButtonIndex == MouseButton.Right)
-					{
-						RemoveBetForButton(btn, BetType.Straight, new List<int> { number }, number, true);
-					}
-				}
-			};
+			_buttonBets[btn] = null;
+			_buttonBetType[btn] = BetType.Straight;
+			_buttonBaseLabel[btn] = label;
+
+			RegisterHoldEvents(btn, 
+				() => PlaceBet(BetType.Straight, new List<int> { number }, btn, number, true),
+				() => RemoveBetForButton(btn, number, true));
+
 			return btn;
 		}
 
@@ -76,48 +137,26 @@ public partial class BettingTable : Control
 			btnZero.Text = "0";
 			btnZero.CustomMinimumSize = new Vector2(45, 141);
 			StyleButtonBaseColor(btnZero, 0);
-			_buttonBets[btnZero] = new List<Bet>();
 
-			btnZero.GuiInput += (inputEvent) =>
-			{
-				if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
-				{
-					if (mouseEvent.ButtonIndex == MouseButton.Left)
-					{
-						PlaceBet(BetType.Straight, new List<int> { 0 }, btnZero, 0, true);
-					}
-					else if (mouseEvent.ButtonIndex == MouseButton.Right)
-					{
-						RemoveBetForButton(btnZero, BetType.Straight, new List<int> { 0 }, 0, true);
-					}
-				}
-			};
+			_buttonBets[btnZero] = null;
+			_buttonBetType[btnZero] = BetType.Straight;
+			_buttonBaseLabel[btnZero] = "0";
+
+			RegisterHoldEvents(btnZero,
+				() => PlaceBet(BetType.Straight, new List<int> { 0 }, btnZero, 0, true),
+				() => RemoveBetForButton(btnZero, 0, true));
 		}
-
-		GD.Print("[BettingTable] Professional roulette layout built via updated scene hierarchy.");
 	}
-
 
 	private void StyleButtonBaseColor(Button btn, int number)
 	{
 		var styleBox = new StyleBoxFlat();
 		styleBox.CornerRadiusTopLeft = styleBox.CornerRadiusTopRight = styleBox.CornerRadiusBottomLeft = styleBox.CornerRadiusBottomRight = 4;
-
-		if (number == 0)
-		{
-			styleBox.BgColor = new Color(0.1f, 0.6f, 0.2f); // Casino Green for 0
-		}
-		else if (WheelData.IsRed(number))
-		{
-			styleBox.BgColor = new Color(0.8f, 0.15f, 0.15f); // Roulette Red
-		}
-		else
-		{
-			styleBox.BgColor = new Color(0.18f, 0.18f, 0.18f); // Roulette Black/Dark Gray
-		}
+		if (number == 0) styleBox.BgColor = new Color(0.1f, 0.6f, 0.2f);
+		else if (WheelData.IsRed(number)) styleBox.BgColor = new Color(0.8f, 0.15f, 0.15f);
+		else styleBox.BgColor = new Color(0.18f, 0.18f, 0.18f);
 
 		btn.AddThemeStyleboxOverride("normal", styleBox);
-		
 		var hoverStyle = (StyleBoxFlat)styleBox.Duplicate();
 		hoverStyle.BgColor = hoverStyle.BgColor.Lightened(0.2f);
 		btn.AddThemeStyleboxOverride("hover", hoverStyle);
@@ -127,7 +166,6 @@ public partial class BettingTable : Control
 	{
 		var styleBox = new StyleBoxFlat();
 		styleBox.CornerRadiusTopLeft = styleBox.CornerRadiusTopRight = styleBox.CornerRadiusBottomLeft = styleBox.CornerRadiusBottomRight = 4;
-
 		if (number == 0) styleBox.BgColor = new Color(0.1f, 0.6f, 0.2f);
 		else if (WheelData.IsRed(number)) styleBox.BgColor = new Color(0.8f, 0.15f, 0.15f);
 		else styleBox.BgColor = new Color(0.18f, 0.18f, 0.18f);
@@ -135,71 +173,51 @@ public partial class BettingTable : Control
 		var hoverStyle = (StyleBoxFlat)styleBox.Duplicate();
 		hoverStyle.BgColor = hoverStyle.BgColor.Lightened(0.2f);
 
-		if (_buttonBets.ContainsKey(btn) && _buttonBets[btn].Count > 0)
+		bool hasBet = _buttonBets.TryGetValue(btn, out var bet) && bet != null;
+		if (hasBet)
 		{
 			styleBox.BorderWidthTop = styleBox.BorderWidthBottom = styleBox.BorderWidthLeft = styleBox.BorderWidthRight = 3;
 			styleBox.BorderColor = new Color(1f, 0.84f, 0f);
-
 			hoverStyle.BorderWidthTop = hoverStyle.BorderWidthBottom = hoverStyle.BorderWidthLeft = hoverStyle.BorderWidthRight = 3;
 			hoverStyle.BorderColor = new Color(1f, 0.84f, 0f);
 		}
 
 		btn.AddThemeStyleboxOverride("normal", styleBox);
 		btn.AddThemeStyleboxOverride("hover", hoverStyle);
+		btn.Text = hasBet ? $"{_buttonBaseLabel[btn]}\n${bet.ChipsWagered}" : _buttonBaseLabel[btn];
 	}
 
 	private void ConnectOutsideBetButtons()
-{
-	// 3 Dozens spanning the top row
-	SetupOutsideButton("TableLayout/DozensRow/Dozen1Button", BetType.Dozen1, null, "1st 12", new Color(0.2f, 0.4f, 0.4f), 180);
-	SetupOutsideButton("TableLayout/DozensRow/Dozen2Button", BetType.Dozen2, null, "2nd 12", new Color(0.2f, 0.4f, 0.4f), 180);
-	SetupOutsideButton("TableLayout/DozensRow/Dozen3Button", BetType.Dozen3, null, "3rd 12", new Color(0.2f, 0.4f, 0.4f), 180);
-	
-	// Bottom row: Changed 1-18 and 19-36 to a clear slate/steel blue so they don't blend with the background
-	SetupOutsideButton("TableLayout/EvenOddRedBlackRow/LowButton", BetType.Low, null, "1-18", new Color(0.25f, 0.35f, 0.45f), 90);
-	SetupOutsideButton("TableLayout/EvenOddRedBlackRow/EvenButton", BetType.Even, null, "EVEN", new Color(0.2f, 0.3f, 0.5f), 90);
-	SetupOutsideButton("TableLayout/EvenOddRedBlackRow/RedButton", BetType.Red, null, "RED", new Color(0.8f, 0.15f, 0.15f), 90);
-	SetupOutsideButton("TableLayout/EvenOddRedBlackRow/BlackButton", BetType.Black, null, "BLACK", new Color(0.18f, 0.18f, 0.18f), 90);
-	SetupOutsideButton("TableLayout/EvenOddRedBlackRow/OddButton", BetType.Odd, null, "ODD", new Color(0.2f, 0.3f, 0.5f), 90);
-	SetupOutsideButton("TableLayout/EvenOddRedBlackRow/HighButton", BetType.High, null, "19-36", new Color(0.25f, 0.35f, 0.45f), 90);
-	
-	GD.Print("[BettingTable] Outside bet buttons updated with high-contrast colors.");
-}
-
-private void SetupOutsideButton(string path, BetType type, List<int> numbers, string labelText, Color baseColor, int customWidth)
-{
-	var btn = GetNodeOrNull<Button>(path);
-	if (btn == null)
 	{
-		GD.PrintErr($"[BettingTable] ERROR: Outside button at '{path}' not found! Check your scene tree.");
-		return;
+		SetupOutsideButton("TableLayout/DozensRow/Dozen1Button", BetType.Dozen1, null, "1st 12", new Color(0.2f, 0.4f, 0.4f), 180);
+		SetupOutsideButton("TableLayout/DozensRow/Dozen2Button", BetType.Dozen2, null, "2nd 12", new Color(0.2f, 0.4f, 0.4f), 180);
+		SetupOutsideButton("TableLayout/DozensRow/Dozen3Button", BetType.Dozen3, null, "3rd 12", new Color(0.2f, 0.4f, 0.4f), 180);
+		SetupOutsideButton("TableLayout/EvenOddRedBlackRow/LowButton", BetType.Low, null, "1-18", new Color(0.25f, 0.35f, 0.45f), 90);
+		SetupOutsideButton("TableLayout/EvenOddRedBlackRow/EvenButton", BetType.Even, null, "EVEN", new Color(0.2f, 0.3f, 0.5f), 90);
+		SetupOutsideButton("TableLayout/EvenOddRedBlackRow/RedButton", BetType.Red, null, "RED", new Color(0.8f, 0.15f, 0.15f), 90);
+		SetupOutsideButton("TableLayout/EvenOddRedBlackRow/BlackButton", BetType.Black, null, "BLACK", new Color(0.18f, 0.18f, 0.18f), 90);
+		SetupOutsideButton("TableLayout/EvenOddRedBlackRow/OddButton", BetType.Odd, null, "ODD", new Color(0.2f, 0.3f, 0.5f), 90);
+		SetupOutsideButton("TableLayout/EvenOddRedBlackRow/HighButton", BetType.High, null, "19-36", new Color(0.25f, 0.35f, 0.45f), 90);
 	}
 
-	btn.Text = labelText;
-	btn.CustomMinimumSize = new Vector2(customWidth, 35);
-	
-	// Force the button to expand horizontally to fill container distribution evenly
-	btn.SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
-	
-	StyleOutsideButtonBaseColor(btn, baseColor);
-
-	_buttonBets[btn] = new List<Bet>();
-
-	btn.GuiInput += (inputEvent) =>
+	private void SetupOutsideButton(string path, BetType type, List<int> numbers, string labelText, Color baseColor, int customWidth)
 	{
-		if (inputEvent is InputEventMouseButton mouseEvent && mouseEvent.Pressed)
-		{
-			if (mouseEvent.ButtonIndex == MouseButton.Left)
-			{
-				PlaceBet(type, numbers, btn, -1, false, baseColor);
-			}
-			else if (mouseEvent.ButtonIndex == MouseButton.Right)
-			{
-				RemoveBetForButton(btn, type, numbers, -1, false, baseColor);
-			}
-		}
-	};
-}
+		var btn = GetNodeOrNull<Button>(path);
+		if (btn == null) { GD.PrintErr($"[BettingTable] ERROR: '{path}' not found!"); return; }
+
+		btn.Text = labelText;
+		btn.CustomMinimumSize = new Vector2(customWidth, 35);
+		btn.SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
+		StyleOutsideButtonBaseColor(btn, baseColor);
+
+		_buttonBets[btn] = null;
+		_buttonBetType[btn] = type;
+		_buttonBaseLabel[btn] = labelText;
+
+		RegisterHoldEvents(btn,
+			() => PlaceBet(type, numbers, btn, -1, false, baseColor),
+			() => RemoveBetForButton(btn, -1, false, baseColor));
+	}
 
 	private void StyleOutsideButtonBaseColor(Button btn, Color baseColor)
 	{
@@ -222,203 +240,228 @@ private void SetupOutsideButton(string path, BetType type, List<int> numbers, st
 		var hoverStyle = (StyleBoxFlat)styleBox.Duplicate();
 		hoverStyle.BgColor = hoverStyle.BgColor.Lightened(0.2f);
 
-		if (_buttonBets.ContainsKey(btn) && _buttonBets[btn].Count > 0)
+		bool hasBet = _buttonBets.TryGetValue(btn, out var bet) && bet != null;
+		if (hasBet)
 		{
 			styleBox.BorderWidthTop = styleBox.BorderWidthBottom = styleBox.BorderWidthLeft = styleBox.BorderWidthRight = 3;
 			styleBox.BorderColor = new Color(1f, 0.84f, 0f);
-
 			hoverStyle.BorderWidthTop = hoverStyle.BorderWidthBottom = hoverStyle.BorderWidthLeft = hoverStyle.BorderWidthRight = 3;
 			hoverStyle.BorderColor = new Color(1f, 0.84f, 0f);
 		}
 
 		btn.AddThemeStyleboxOverride("normal", styleBox);
 		btn.AddThemeStyleboxOverride("hover", hoverStyle);
+		btn.Text = hasBet ? $"{_buttonBaseLabel[btn]}\n${bet.ChipsWagered}" : _buttonBaseLabel[btn];
+	}
+
+	private bool IsBetTypeBlockedByBoss(BetType type)
+	{
+		var boss = _gameState.ActiveBoss;
+		return boss?.IsBetTypeBlocked != null && boss.IsBetTypeBlocked(type);
 	}
 
 	private void PlaceBet(BetType type, List<int> numbers, Button btn, int numberVal, bool isStraight, Color outsideBaseColor = default)
 	{
-		if (_gameState.ChipsRemainingThisSpin < DefaultChipsPerClick)
+		if (IsBetTypeBlockedByBoss(type)) return;
+		if (_gameState.ChipsRemainingThisSpin < DefaultChipsPerClick) return;
+
+		var boss = _gameState.ActiveBoss;
+		if (boss?.MaxDistinctBetButtons != null)
 		{
-			string targetDesc = numbers != null ? string.Join(",", numbers) : type.ToString();
-			GD.Print($"[BettingTable] REJECTED: Not enough chips to place bet on [{targetDesc}]. Remaining: {_gameState.ChipsRemainingThisSpin}");
-			return;
+			int max = boss.MaxDistinctBetButtons();
+			bool isNewSpot = !_buttonBets.TryGetValue(btn, out var existingCheck) || existingCheck == null;
+			int distinctCount = _buttonBets.Count(kvp => kvp.Value != null);
+			if (isNewSpot && distinctCount >= max) return;
 		}
 
-		float payout = WheelData.GetBasePayout(type);
-		var bet = new Bet(type, numbers, DefaultChipsPerClick, payout);
-		
-		_gameState.ActiveBets.Add(bet);
-		_buttonBets[btn].Add(bet);
-		_gameState.ChipsRemainingThisSpin -= DefaultChipsPerClick;
-
-		if (isStraight)
+		if (_buttonBets.TryGetValue(btn, out Bet existingBet) && existingBet != null)
 		{
-			UpdateButtonVisualState(btn, numberVal);
+			existingBet.ChipsWagered += DefaultChipsPerClick;
 		}
 		else
 		{
-			UpdateOutsideButtonVisualState(btn, outsideBaseColor);
+			float payout = WheelData.GetBasePayout(type);
+			var bet = new Bet(type, numbers, DefaultChipsPerClick, payout);
+			_gameState.ActiveBets.Add(bet);
+			_buttonBets[btn] = bet;
 		}
 
-		string targetStr = numbers != null ? string.Join(", ", numbers) : type.ToString();
-		GD.Print($"[BettingTable] BET PLACED -> Type: {type}, Target(s): [{targetStr}], Chips Wagered: {DefaultChipsPerClick}, Chips Remaining: {_gameState.ChipsRemainingThisSpin}");
+		_gameState.ChipsRemainingThisSpin -= DefaultChipsPerClick;
+
+		if (isStraight) UpdateButtonVisualState(btn, numberVal);
+		else UpdateOutsideButtonVisualState(btn, outsideBaseColor);
 
 		_gameState.Stats.TotalBetsPlaced++;
 		GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.BetPlaced);
 	}
 
-	private void RemoveBetForButton(Button btn, BetType type, List<int> numbers, int numberVal, bool isStraight, Color outsideBaseColor = default)
+	private void RemoveBetForButton(Button btn, int numberVal, bool isStraight, Color outsideBaseColor = default)
 	{
-		if (!_buttonBets.ContainsKey(btn) || _buttonBets[btn].Count == 0)
+		if (!_buttonBets.TryGetValue(btn, out Bet bet) || bet == null) return;
+
+		int refund = Mathf.Min(DefaultChipsPerClick, bet.ChipsWagered);
+		bet.ChipsWagered -= refund;
+		_gameState.ChipsRemainingThisSpin += refund;
+
+		if (bet.ChipsWagered <= 0)
 		{
-			GD.Print("[BettingTable] Cannot remove bet: No active bets on this button.");
-			return;
+			_gameState.ActiveBets.Remove(bet);
+			_buttonBets[btn] = null;
 		}
 
-		var betToRemove = _buttonBets[btn][_buttonBets[btn].Count - 1];
-		
-		_buttonBets[btn].Remove(betToRemove);
-		_gameState.ActiveBets.Remove(betToRemove);
-		_gameState.ChipsRemainingThisSpin += betToRemove.ChipsWagered;
-
-		if (isStraight)
-		{
-			UpdateButtonVisualState(btn, numberVal);
-		}
-		else
-		{
-			UpdateOutsideButtonVisualState(btn, outsideBaseColor);
-		}
-
-		string targetStr = numbers != null ? string.Join(", ", numbers) : type.ToString();
-		GD.Print($"[BettingTable] BET REMOVED -> Type: {type}, Target(s): [{targetStr}], Refunded: {betToRemove.ChipsWagered}, Chips Remaining: {_gameState.ChipsRemainingThisSpin}");
+		if (isStraight) UpdateButtonVisualState(btn, numberVal);
+		else UpdateOutsideButtonVisualState(btn, outsideBaseColor);
 
 		GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.BetPlaced);
 	}
 
 	private void OnSpinResolved(int winningNumber, int scoreGained)
 	{
-		foreach (var kvp in _buttonBets)
+		_heldButton = null;
+		foreach (var btn in _buttonBets.Keys.ToList())
 		{
-			kvp.Value.Clear();
-			if (kvp.Key.Text == "0")
-			{
-				StyleButtonBaseColor(kvp.Key, 0);
-			}
-			else if (int.TryParse(kvp.Key.Text, out int num))
-			{
-				StyleButtonBaseColor(kvp.Key, num);
-			}
-			else
-			{
-				Color resetColor = kvp.Key.Text switch
-				{
-					"RED" => new Color(0.8f, 0.15f, 0.15f),
-					"BLACK" => new Color(0.18f, 0.18f, 0.18f),
-					"ODD" or "EVEN" => new Color(0.2f, 0.3f, 0.5f),
-					"1-18" or "19-36" => new Color(0.3f, 0.3f, 0.3f),
-					_ => new Color(0.2f, 0.4f, 0.4f)
-				};
-				StyleOutsideButtonBaseColor(kvp.Key, resetColor);
-			}
+			_buttonBets[btn] = null;
+			RestoreButtonBaseVisual(btn);
 		}
-		GD.Print("[BettingTable] Spin resolved — cleared all board highlights and button bet tracking.");
+	}
+
+	private void RestoreButtonBaseVisual(Button btn)
+	{
+		btn.Text = _buttonBaseLabel[btn];
+
+		if (int.TryParse(_buttonBaseLabel[btn], out int num))
+			StyleButtonBaseColor(btn, num);
+		else
+			StyleOutsideButtonBaseColor(btn, GetOutsideButtonColor(_buttonBaseLabel[btn]));
+	}
+
+	private void OnRoundStarted() => ApplyBossRestrictions();
+
+	private void ApplyBossRestrictions()
+	{
+		var boss = _gameState.ActiveBoss;
+		foreach (var kvp in _buttonBetType)
+		{
+			Button btn = kvp.Key;
+			bool blocked = boss?.IsBetTypeBlocked != null && boss.IsBetTypeBlocked(kvp.Value);
+			btn.Disabled = blocked;
+			btn.Modulate = blocked ? new Color(1, 1, 1, 0.35f) : Colors.White;
+		}
+		
+		RefreshTooltips();
 	}
 
 	public void RepeatLastBets()
 	{
-		GD.Print("[BettingTable] Repeating last round's bets...");
-		
-		// 1. REFUND existing active bets before clearing them out
 		foreach (var bet in _gameState.ActiveBets)
-		{
 			_gameState.ChipsRemainingThisSpin += bet.ChipsWagered;
-		}
 
-		// 2. Clear visual buttons and active list
-		foreach (var kvp in _buttonBets)
+		foreach (var btn in _buttonBets.Keys.ToList())
 		{
-			kvp.Value.Clear();
-			if (kvp.Key.Text == "0")
-			{
-				StyleButtonBaseColor(kvp.Key, 0);
-			}
-			else if (int.TryParse(kvp.Key.Text, out int num))
-			{
-				StyleButtonBaseColor(kvp.Key, num);
-			}
-			else
-			{
-				Color resetColor = kvp.Key.Text switch
-				{
-					"RED" => new Color(0.8f, 0.15f, 0.15f),
-					"BLACK" => new Color(0.18f, 0.18f, 0.18f),
-					"ODD" or "EVEN" => new Color(0.2f, 0.3f, 0.5f),
-					"1-18" or "19-36" => new Color(0.3f, 0.3f, 0.3f),
-					_ => new Color(0.2f, 0.4f, 0.4f)
-				};
-				StyleOutsideButtonBaseColor(kvp.Key, resetColor);
-			}
+			_buttonBets[btn] = null;
+			RestoreButtonBaseVisual(btn);
 		}
 		_gameState.ActiveBets.Clear();
 
-		// 3. Apply cached last round bets
 		foreach (var bet in _lastRoundBets)
 		{
-			if (_gameState.ChipsRemainingThisSpin < bet.ChipsWagered)
-			{
-				GD.Print("[BettingTable] Repeat stopped: Insufficient chips for remaining repeated bets.");
-				break;
-			}
+			if (IsBetTypeBlockedByBoss(bet.Type)) continue;
+			if (_gameState.ChipsRemainingThisSpin < bet.ChipsWagered) break;
 
-			_gameState.ActiveBets.Add(new Bet(bet.Type, bet.Numbers, bet.ChipsWagered, bet.Payout));
+			var newBet = new Bet(bet.Type, bet.Numbers, bet.ChipsWagered, bet.Payout);
+			_gameState.ActiveBets.Add(newBet);
 			_gameState.ChipsRemainingThisSpin -= bet.ChipsWagered;
 			_gameState.Stats.TotalBetsPlaced++;
 
-			foreach (var kvp in _buttonBets)
+			foreach (var btn in _buttonBetType.Keys)
 			{
-				if (bet.Type == BetType.Straight && bet.Numbers != null && bet.Numbers.Count > 0 && kvp.Key.Text == bet.Numbers[0].ToString())
-				{
-					kvp.Value.Add(_gameState.ActiveBets[_gameState.ActiveBets.Count - 1]);
-					if (bet.Numbers[0] == 0) UpdateButtonVisualState(kvp.Key, 0);
-					else UpdateButtonVisualState(kvp.Key, bet.Numbers[0]);
-				}
-				else if (bet.Type != BetType.Straight)
-				{
-					bool match = (bet.Type == BetType.Red && kvp.Key.Text == "RED") ||
-								 (bet.Type == BetType.Black && kvp.Key.Text == "BLACK") ||
-								 (bet.Type == BetType.Odd && kvp.Key.Text == "ODD") ||
-								 (bet.Type == BetType.Even && kvp.Key.Text == "EVEN") ||
-								 (bet.Type == BetType.Low && kvp.Key.Text == "1-18") ||
-								 (bet.Type == BetType.High && kvp.Key.Text == "19-36") ||
-								 (bet.Type == BetType.Dozen1 && kvp.Key.Text == "1st 12") ||
-								 (bet.Type == BetType.Dozen2 && kvp.Key.Text == "2nd 12") ||
-								 (bet.Type == BetType.Dozen3 && kvp.Key.Text == "3rd 12");
+				bool matches = bet.Type == BetType.Straight
+					? (bet.Numbers != null && bet.Numbers.Count > 0 && _buttonBaseLabel[btn] == bet.Numbers[0].ToString())
+					: DoesButtonMatchOutsideType(btn, bet.Type);
 
-					if (match)
-					{
-						kvp.Value.Add(_gameState.ActiveBets[_gameState.ActiveBets.Count - 1]);
-						Color col = kvp.Key.Text switch
-						{
-							"RED" => new Color(0.8f, 0.15f, 0.15f),
-							"BLACK" => new Color(0.18f, 0.18f, 0.18f),
-							"ODD" or "EVEN" => new Color(0.2f, 0.3f, 0.5f),
-							"1-18" or "19-36" => new Color(0.3f, 0.3f, 0.3f),
-							_ => new Color(0.2f, 0.4f, 0.4f)
-						};
-						UpdateOutsideButtonVisualState(kvp.Key, col);
-					}
+				if (matches)
+				{
+					_buttonBets[btn] = newBet;
+					if (bet.Type == BetType.Straight) UpdateButtonVisualState(btn, bet.Numbers[0]);
+					else UpdateOutsideButtonVisualState(btn, GetOutsideButtonColor(_buttonBaseLabel[btn]));
+					break;
 				}
 			}
 		}
 
-		GD.Print($"[BettingTable] Repeat complete. Active bets count: {_gameState.ActiveBets.Count}, Remaining Chips: {_gameState.ChipsRemainingThisSpin}");
 		GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.BetPlaced);
+	}
+
+	private bool DoesButtonMatchOutsideType(Button btn, BetType type)
+	{
+		string label = _buttonBaseLabel[btn];
+		return (type == BetType.Red && label == "RED") ||
+			   (type == BetType.Black && label == "BLACK") ||
+			   (type == BetType.Odd && label == "ODD") ||
+			   (type == BetType.Even && label == "EVEN") ||
+			   (type == BetType.Low && label == "1-18") ||
+			   (type == BetType.High && label == "19-36") ||
+			   (type == BetType.Dozen1 && label == "1st 12") ||
+			   (type == BetType.Dozen2 && label == "2nd 12") ||
+			   (type == BetType.Dozen3 && label == "3rd 12");
+	}
+
+	private Color GetOutsideButtonColor(string label)
+	{
+		return label switch
+		{
+			"RED" => new Color(0.8f, 0.15f, 0.15f),
+			"BLACK" => new Color(0.18f, 0.18f, 0.18f),
+			"ODD" or "EVEN" => new Color(0.2f, 0.3f, 0.5f),
+			"1-18" or "19-36" => new Color(0.25f, 0.35f, 0.45f),
+			_ => new Color(0.2f, 0.4f, 0.4f)
+		};
 	}
 
 	public void CacheBetsForRepeat()
 	{
 		_lastRoundBets = new List<Bet>(_gameState.ActiveBets);
-		GD.Print($"[BettingTable] Cached {_lastRoundBets.Count} bets for repeat.");
 	}
+	
+	public void ClearAllBets()
+	{
+		foreach (var btn in _buttonBets.Keys.ToList())
+		{
+			if (_buttonBets[btn] != null)
+			{
+				_gameState.ChipsRemainingThisSpin += _buttonBets[btn].ChipsWagered;
+				_buttonBets[btn] = null;
+				RestoreButtonBaseVisual(btn);
+			}
+		}
+		_gameState.ActiveBets.Clear();
+		GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.BetPlaced);
+	}
+	// Call this inside `_Process` or `ApplyBossRestrictions` to keep tooltips updated
+	private void RefreshTooltips()
+	{
+		foreach (var kvp in _buttonBetType)
+		{
+			Button btn = kvp.Key;
+			BetType type = kvp.Value;
+			
+			string tooltip = $"Type: {type}\nBase Payout: {WheelData.GetBasePayout(type)}x";
+
+			if (IsBetTypeBlockedByBoss(type))
+			{
+				tooltip += $"\n\n[BLOCKED] by {_gameState.ActiveBoss.Name}";
+			}
+			
+			// Show active charm interactions
+			if (type != BetType.Straight && _gameState.OwnedCharms.Any(c => c.Id == "velvet_felt"))
+				tooltip += "\n[BUFF] +15 Score (Velvet Felt)";
+			if (type == BetType.Straight && _gameState.OwnedCharms.Any(c => c.Id == "loaded_dice"))
+				tooltip += "\n[BUFF] 1.3x Score (Loaded Dice)";
+			if (type != BetType.Straight && _gameState.OwnedCharms.Any(c => c.Id == "loaded_dice"))
+				tooltip += "\n[DEBUFF] 0.8x Score (Loaded Dice)";
+
+			btn.TooltipText = tooltip;
+		}
+	}
+	
 }
