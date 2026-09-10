@@ -104,12 +104,13 @@ public partial class BettingTable : Control
 
 		grid.Columns = 12;
 
-		Button CreateNumButton(int number, int w = 45, int h = 45)
+		Button CreateNumButton(int number)
 		{
 			var btn = new Button();
 			string label = number.ToString();
 			btn.Text = label;
-			btn.CustomMinimumSize = new Vector2(w, h);
+			btn.SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
+			btn.SizeFlagsVertical = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
 			StyleButtonBaseColor(btn, number);
 
 			_buttonBets[btn] = null;
@@ -135,7 +136,8 @@ public partial class BettingTable : Control
 		if (btnZero != null)
 		{
 			btnZero.Text = "0";
-			btnZero.CustomMinimumSize = new Vector2(45, 141);
+			btnZero.SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
+			btnZero.SizeFlagsVertical = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
 			StyleButtonBaseColor(btnZero, 0);
 
 			_buttonBets[btnZero] = null;
@@ -206,8 +208,8 @@ public partial class BettingTable : Control
 		if (btn == null) { GD.PrintErr($"[BettingTable] ERROR: '{path}' not found!"); return; }
 
 		btn.Text = labelText;
-		btn.CustomMinimumSize = new Vector2(customWidth, 35);
 		btn.SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
+		btn.SizeFlagsVertical = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
 		StyleOutsideButtonBaseColor(btn, baseColor);
 
 		_buttonBets[btn] = null;

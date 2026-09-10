@@ -6,6 +6,32 @@
 [ext_resource type="Script" uid="uid://bfsb8tcthhkfg" path="res://scripts/gameplay/ShopManager.cs" id="2_rarhs"]
 [ext_resource type="Script" uid="uid://c4p67i0d3yylj" path="res://scripts/ui/InventoryPanel.cs" id="3_vcsgt"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_topbar"]
+bg_color = Color(0.1, 0.1, 0.12, 1)
+border_width_bottom = 2
+border_color = Color(0.3, 0.3, 0.35, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bottompanel"]
+bg_color = Color(0.12, 0.12, 0.15, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_popup"]
+bg_color = Color(0.18, 0.18, 0.22, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.4, 0.4, 0.45, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 4
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_0bbpv"]
 bg_color = Color(0.15, 0.12, 0.1, 0.95)
 
@@ -27,6 +53,170 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
+[node name="RouletteWheelNode" type="Control" parent="." unique_id=700000001]
+anchors_preset = 0
+offset_left = 15.0
+offset_top = 125.0
+offset_right = 310.0
+offset_bottom = 485.0
+
+[node name="WheelBackground" type="ColorRect" parent="RouletteWheelNode" unique_id=700000002]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.08, 0.1, 1)
+
+[node name="WheelPlaceholderLabel" type="Label" parent="RouletteWheelNode" unique_id=700000003]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -100.0
+offset_top = -12.5
+offset_right = 100.0
+offset_bottom = 12.5
+grow_horizontal = 2
+grow_vertical = 2
+text = "[ Roulette Wheel Animation ]"
+horizontal_alignment = 1
+
+[node name="BettingTable" type="GridContainer" parent="." unique_id=778055709]
+layout_mode = 0
+offset_left = 330.0
+offset_top = 125.0
+offset_right = 1265.0
+offset_bottom = 485.0
+script = ExtResource("2_0bbpv")
+
+[node name="TableLayout" type="VBoxContainer" parent="BettingTable" unique_id=397076113]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 6
+
+[node name="NumberAndZeroBox" type="HBoxContainer" parent="BettingTable/TableLayout" unique_id=1357336074]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.5
+theme_override_constants/separation = 6
+
+[node name="ZeroButton" type="Button" parent="BettingTable/TableLayout/NumberAndZeroBox" unique_id=134634580]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.2
+theme_override_font_sizes/font_size = 20
+
+[node name="NumberButtons" type="GridContainer" parent="BettingTable/TableLayout/NumberAndZeroBox" unique_id=1462375494]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+size_flags_stretch_ratio = 11.0
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 4
+columns = 12
+
+[node name="DozensRow" type="HBoxContainer" parent="BettingTable/TableLayout" unique_id=218297856]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_override_constants/separation = 6
+
+[node name="Dozen1Button" type="Button" parent="BettingTable/TableLayout/DozensRow" unique_id=273070989]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 15
+
+[node name="Dozen2Button" type="Button" parent="BettingTable/TableLayout/DozensRow" unique_id=1874047354]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 15
+
+[node name="Dozen3Button" type="Button" parent="BettingTable/TableLayout/DozensRow" unique_id=717790669]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 15
+
+[node name="EvenOddRedBlackRow" type="HBoxContainer" parent="BettingTable/TableLayout" unique_id=1106458895]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 0.8
+theme_override_constants/separation = 6
+
+[node name="LowButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=1517715909]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="EvenButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=337739665]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="RedButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=71127923]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="BlackButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=480886957]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="OddButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=1247866397]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="HighButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=868327758]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 14
+
+[node name="SpinButton" type="Button" parent="." unique_id=1767233103]
+layout_mode = 0
+offset_left = 330.0
+offset_top = 615.0
+offset_right = 530.0
+offset_bottom = 685.0
+theme_override_font_sizes/font_size = 20
+text = "Spin"
+
+[node name="RepeatBetButton" type="Button" parent="." unique_id=741566659]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 615.0
+offset_right = 880.0
+offset_bottom = 685.0
+theme_override_font_sizes/font_size = 18
+text = "Repeat last bet"
+
+[node name="ClearBetsButton" type="Button" parent="." unique_id=-961633963]
+layout_mode = 0
+offset_left = 1000.0
+offset_top = 615.0
+offset_right = 1240.0
+offset_bottom = 685.0
+theme_override_font_sizes/font_size = 18
+text = "Remove bets"
+
+[node name="SpinManager" type="Node" parent="." unique_id=484343743]
+script = ExtResource("1_elqb8")
+
 [node name="HUD" type="Control" parent="." unique_id=955981003]
 layout_mode = 1
 anchors_preset = 15
@@ -34,109 +224,151 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 script = ExtResource("1_rvslj")
+
+[node name="TopBarPanel" type="Panel" parent="HUD" unique_id=500000001]
+layout_mode = 0
+offset_right = 1280.0
+offset_bottom = 110.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_topbar")
 
 [node name="ChipsLabel" type="Label" parent="HUD" unique_id=832572175]
 layout_mode = 0
 offset_left = 15.0
-offset_top = 20.0
-offset_right = 150.0
-offset_bottom = 43.0
+offset_top = 15.0
+offset_right = 215.0
+offset_bottom = 40.0
+theme_override_font_sizes/font_size = 15
 text = "Chips: x"
-
-[node name="SpinsLabel" type="Label" parent="HUD" unique_id=742734971]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 50.0
-offset_right = 150.0
-offset_bottom = 73.0
-text = "Spins: y"
-
-[node name="ScoreLabel" type="Label" parent="HUD" unique_id=963632742]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 80.0
-offset_right = 250.0
-offset_bottom = 103.0
-text = "Score: 0 / z"
-
-[node name="RoundLabel" type="Label" parent="HUD" unique_id=837589429]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 110.0
-offset_right = 250.0
-offset_bottom = 133.0
-text = "Round: 1"
 
 [node name="CashLabel" type="Label" parent="HUD" unique_id=1761258612]
 layout_mode = 0
 offset_left = 15.0
-offset_top = 140.0
-offset_right = 150.0
-offset_bottom = 163.0
-text = "Cash: $0"
+offset_top = 42.0
+offset_right = 215.0
+offset_bottom = 67.0
+theme_override_font_sizes/font_size = 15
+text = "Money: $0"
 
-[node name="LastSpinLabel" type="Label" parent="HUD" unique_id=133535203]
+[node name="ScoreLabel" type="Label" parent="HUD" unique_id=963632742]
 layout_mode = 0
 offset_left = 15.0
-offset_top = 180.0
-offset_right = 350.0
-offset_bottom = 203.0
-text = "Last Spin: -"
+offset_top = 69.0
+offset_right = 215.0
+offset_bottom = 94.0
+theme_override_font_sizes/font_size = 15
+text = "Score: 0 / z"
 
-[node name="BossLabel" type="Label" parent="HUD" unique_id=1580651041]
+[node name="CharmsRow" type="HBoxContainer" parent="HUD" unique_id=436212278]
 layout_mode = 0
-offset_left = 15.0
-offset_top = 220.0
-offset_right = 350.0
-offset_bottom = 245.0
-theme_override_colors/font_color = Color(0.95, 0.2, 0.2, 1)
-text = "BOSS"
-
-[node name="CharmsSlotsLabel" type="Label" parent="HUD" unique_id=436212277]
-layout_mode = 0
-offset_left = 1100.0
-offset_top = 20.0
-offset_right = 1260.0
-offset_bottom = 43.0
-text = "Charms: 0/5"
-horizontal_alignment = 2
-
-[node name="PeekedNumberLabel" type="Label" parent="HUD" unique_id=1691355236]
-layout_mode = 0
-offset_left = 983.0
-offset_top = 46.0
-offset_right = 1143.0
-offset_bottom = 69.0
-text = "Peeked Number"
-horizontal_alignment = 2
-
-[node name="SpinButton" type="Button" parent="HUD" unique_id=1767233103]
-layout_mode = 0
-offset_left = 618.0
-offset_top = 658.0
-offset_right = 678.0
-offset_bottom = 693.0
-text = "SPIN"
-
-[node name="InventoryButton" type="Button" parent="HUD" unique_id=742755591]
-layout_mode = 0
-offset_left = 15.0
-offset_top = 658.0
-offset_right = 115.0
-offset_bottom = 693.0
-text = "Inventory"
+offset_left = 230.0
+offset_top = 15.0
+offset_right = 880.0
+offset_bottom = 95.0
+theme_override_constants/separation = 10
+alignment = 1
 
 [node name="ConsumablesRow" type="HBoxContainer" parent="HUD" unique_id=1956234086]
 layout_mode = 0
-offset_left = 935.0
-offset_top = 498.0
-offset_right = 975.0
-offset_bottom = 538.0
+offset_left = 940.0
+offset_top = 15.0
+offset_right = 1265.0
+offset_bottom = 95.0
+theme_override_constants/separation = 10
+alignment = 1
 
-[node name="OverlayLayer" type="CanvasLayer" parent="HUD" unique_id=683710514]
+[node name="BottomLeftPanel" type="Panel" parent="HUD" unique_id=500000002]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 500.0
+offset_right = 310.0
+offset_bottom = 685.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_bottompanel")
 
-[node name="ShopPanel" type="Panel" parent="HUD/OverlayLayer" unique_id=165669719]
+[node name="RoundLabel" type="Label" parent="HUD/BottomLeftPanel" unique_id=837589429]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 10.0
+offset_right = 280.0
+offset_bottom = 35.0
+text = "Round: 1"
+
+[node name="SpinsLabel" type="Label" parent="HUD/BottomLeftPanel" unique_id=742734971]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 35.0
+offset_right = 280.0
+offset_bottom = 60.0
+text = "Spins Remaining: y"
+
+[node name="BossLabel" type="Label" parent="HUD/BottomLeftPanel" unique_id=1580651041]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 60.0
+offset_right = 280.0
+offset_bottom = 95.0
+theme_override_colors/font_color = Color(0.95, 0.2, 0.2, 1)
+text = "Boss: None"
+autowrap_mode = 1
+
+[node name="LastSpinLabel" type="Label" parent="HUD/BottomLeftPanel" unique_id=133535203]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 95.0
+offset_right = 280.0
+offset_bottom = 120.0
+text = "Last Spin: -"
+autowrap_mode = 1
+
+[node name="PeekedNumberLabel" type="Label" parent="HUD/BottomLeftPanel" unique_id=1691355236]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 120.0
+offset_right = 280.0
+offset_bottom = 145.0
+autowrap_mode = 1
+
+[node name="OptionsButton" type="Button" parent="HUD/BottomLeftPanel" unique_id=742755591]
+layout_mode = 0
+offset_left = 15.0
+offset_top = 148.0
+offset_right = 280.0
+offset_bottom = 178.0
+text = "Options"
+
+[node name="OverlayLayer" type="CanvasLayer" parent="." unique_id=683710514]
+layer = 128
+
+[node name="ItemActionPopup" type="Panel" parent="OverlayLayer" unique_id=999990001]
+visible = false
+offset_right = 140.0
+offset_bottom = 110.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_popup")
+
+[node name="ActionList" type="VBoxContainer" parent="OverlayLayer/ItemActionPopup" unique_id=999990002]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = -8.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="UseButton" type="Button" parent="OverlayLayer/ItemActionPopup/ActionList" unique_id=999990003]
+layout_mode = 2
+text = "Use"
+
+[node name="SellButton" type="Button" parent="OverlayLayer/ItemActionPopup/ActionList" unique_id=999990004]
+layout_mode = 2
+text = "Sell"
+
+[node name="ShopPanel" type="Panel" parent="OverlayLayer" unique_id=165669719]
 visible = false
 anchors_preset = 15
 anchor_right = 1.0
@@ -146,7 +378,7 @@ grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_0bbpv")
 script = ExtResource("2_rarhs")
 
-[node name="ShopLabel" type="Label" parent="HUD/OverlayLayer/ShopPanel" unique_id=1843020508]
+[node name="ShopLabel" type="Label" parent="OverlayLayer/ShopPanel" unique_id=1843020508]
 layout_mode = 0
 offset_left = 390.0
 offset_top = 25.0
@@ -156,7 +388,7 @@ theme_override_font_sizes/font_size = 56
 text = "SHOP"
 horizontal_alignment = 1
 
-[node name="ShopCashLabel" type="Label" parent="HUD/OverlayLayer/ShopPanel" unique_id=1888698689]
+[node name="ShopCashLabel" type="Label" parent="OverlayLayer/ShopPanel" unique_id=1888698689]
 layout_mode = 0
 offset_left = 390.0
 offset_top = 95.0
@@ -166,7 +398,7 @@ theme_override_font_sizes/font_size = 26
 text = "Available Cash: $0"
 horizontal_alignment = 1
 
-[node name="ShopItems" type="VBoxContainer" parent="HUD/OverlayLayer/ShopPanel" unique_id=1200629578]
+[node name="ShopItems" type="VBoxContainer" parent="OverlayLayer/ShopPanel" unique_id=1200629578]
 layout_mode = 0
 offset_left = 340.0
 offset_top = 150.0
@@ -174,7 +406,7 @@ offset_right = 940.0
 offset_bottom = 450.0
 theme_override_constants/separation = 12
 
-[node name="RerollButton" type="Button" parent="HUD/OverlayLayer/ShopPanel" unique_id=1881987887]
+[node name="RerollButton" type="Button" parent="OverlayLayer/ShopPanel" unique_id=1881987887]
 layout_mode = 0
 offset_left = 540.0
 offset_top = 500.0
@@ -183,7 +415,7 @@ offset_bottom = 545.0
 theme_override_font_sizes/font_size = 18
 text = "Reroll Shop ($5)"
 
-[node name="NextRoundButton" type="Button" parent="HUD/OverlayLayer/ShopPanel" unique_id=196805839]
+[node name="NextRoundButton" type="Button" parent="OverlayLayer/ShopPanel" unique_id=196805839]
 layout_mode = 0
 offset_left = 540.0
 offset_top = 560.0
@@ -191,7 +423,7 @@ offset_right = 740.0
 offset_bottom = 605.0
 text = "Next Round"
 
-[node name="ResultPopup" type="Panel" parent="HUD/OverlayLayer" unique_id=295559365]
+[node name="ResultPopup" type="Panel" parent="OverlayLayer" unique_id=295559365]
 visible = false
 anchors_preset = 15
 anchor_right = 1.0
@@ -200,7 +432,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_ces25")
 
-[node name="TitleLabel" type="Label" parent="HUD/OverlayLayer/ResultPopup" unique_id=1980025098]
+[node name="ResultPopupTitle" type="Label" parent="OverlayLayer/ResultPopup" unique_id=1980025098]
 layout_mode = 0
 offset_left = 140.0
 offset_top = 100.0
@@ -210,7 +442,7 @@ theme_override_font_sizes/font_size = 84
 text = "LOST/WON"
 horizontal_alignment = 1
 
-[node name="StatsLabel" type="Label" parent="HUD/OverlayLayer/ResultPopup" unique_id=402799105]
+[node name="StatsLabel" type="Label" parent="OverlayLayer/ResultPopup" unique_id=402799105]
 layout_mode = 0
 offset_left = 240.0
 offset_top = 240.0
@@ -221,7 +453,7 @@ text = "Stats"
 horizontal_alignment = 1
 autowrap_mode = 1
 
-[node name="ContinueRestartButton" type="Button" parent="HUD/OverlayLayer/ResultPopup" unique_id=1870654180]
+[node name="ContinueRestartButton" type="Button" parent="OverlayLayer/ResultPopup" unique_id=1870654180]
 layout_mode = 0
 offset_left = 540.0
 offset_top = 530.0
@@ -229,17 +461,12 @@ offset_right = 740.0
 offset_bottom = 580.0
 text = "Continue"
 
-[node name="InventoryPanel" type="Control" parent="HUD/OverlayLayer" unique_id=1347322439]
-visible = false
+[node name="InventoryPanel" type="Control" parent="OverlayLayer" unique_id=1347322439]
 layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchors_preset = 0
 script = ExtResource("3_vcsgt")
 
-[node name="CenterContainer" type="CenterContainer" parent="HUD/OverlayLayer/InventoryPanel" unique_id=672206278]
+[node name="CenterContainer" type="CenterContainer" parent="OverlayLayer/InventoryPanel" unique_id=672206278]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -247,12 +474,12 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="PanelBackground" type="Panel" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer" unique_id=1270971522]
+[node name="PanelBackground" type="Panel" parent="OverlayLayer/InventoryPanel/CenterContainer" unique_id=1270971522]
 custom_minimum_size = Vector2(980, 560)
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_d1k2b")
 
-[node name="TitleLabel" type="Label" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1845905749]
+[node name="TitleLabel" type="Label" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1845905749]
 layout_mode = 0
 offset_left = 25.0
 offset_top = 25.0
@@ -262,7 +489,7 @@ theme_override_font_sizes/font_size = 36
 text = "Inventory & Buffs"
 horizontal_alignment = 1
 
-[node name="UpgradesHeader" type="Label" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=456567365]
+[node name="UpgradesHeader" type="Label" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=456567365]
 layout_mode = 0
 offset_left = 50.0
 offset_top = 95.0
@@ -271,7 +498,7 @@ offset_bottom = 130.0
 theme_override_font_sizes/font_size = 22
 text = "Upgrades"
 
-[node name="UpgradesScroll" type="ScrollContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1111111111]
+[node name="UpgradesScroll" type="ScrollContainer" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1111111111]
 layout_mode = 0
 offset_left = 50.0
 offset_top = 135.0
@@ -279,12 +506,12 @@ offset_right = 460.0
 offset_bottom = 470.0
 horizontal_scroll_mode = 0
 
-[node name="UpgradesList" type="VBoxContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground/UpgradesScroll" unique_id=1872596602]
+[node name="UpgradesList" type="VBoxContainer" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground/UpgradesScroll" unique_id=1872596602]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="CharmsHeader" type="Label" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1040774111]
+[node name="CharmsHeader" type="Label" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1040774111]
 layout_mode = 0
 offset_left = 500.0
 offset_top = 95.0
@@ -293,7 +520,7 @@ offset_bottom = 130.0
 theme_override_font_sizes/font_size = 22
 text = "Charms"
 
-[node name="CharmsScroll" type="ScrollContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=-2072745074]
+[node name="CharmsScroll" type="ScrollContainer" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=1040774112]
 layout_mode = 0
 offset_left = 500.0
 offset_top = 135.0
@@ -301,88 +528,15 @@ offset_right = 910.0
 offset_bottom = 470.0
 horizontal_scroll_mode = 0
 
-[node name="CharmsList" type="VBoxContainer" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground/CharmsScroll" unique_id=597736923]
+[node name="CharmsList" type="VBoxContainer" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground/CharmsScroll" unique_id=597736923]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 12
 
-[node name="CloseButton" type="Button" parent="HUD/OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=200928555]
+[node name="CloseButton" type="Button" parent="OverlayLayer/InventoryPanel/CenterContainer/PanelBackground" unique_id=200928555]
 layout_mode = 0
 offset_left = 440.0
 offset_top = 490.0
 offset_right = 540.0
 offset_bottom = 530.0
 text = "Close"
-
-[node name="BettingTable" type="GridContainer" parent="." unique_id=778055709]
-layout_mode = 0
-offset_left = 460.0
-offset_top = 117.0
-offset_right = 1168.0
-offset_bottom = 422.0
-script = ExtResource("2_0bbpv")
-
-[node name="TableLayout" type="VBoxContainer" parent="BettingTable" unique_id=397076113]
-layout_mode = 2
-
-[node name="NumberAndZeroBox" type="HBoxContainer" parent="BettingTable/TableLayout" unique_id=1357336074]
-layout_mode = 2
-
-[node name="ZeroButton" type="Button" parent="BettingTable/TableLayout/NumberAndZeroBox" unique_id=134634580]
-layout_mode = 2
-
-[node name="NumberButtons" type="GridContainer" parent="BettingTable/TableLayout/NumberAndZeroBox" unique_id=1462375494]
-layout_mode = 2
-columns = 12
-
-[node name="DozensRow" type="HBoxContainer" parent="BettingTable/TableLayout" unique_id=218297856]
-layout_mode = 2
-
-[node name="Dozen1Button" type="Button" parent="BettingTable/TableLayout/DozensRow" unique_id=273070989]
-layout_mode = 2
-
-[node name="Dozen2Button" type="Button" parent="BettingTable/TableLayout/DozensRow" unique_id=1874047354]
-layout_mode = 2
-
-[node name="Dozen3Button" type="Button" parent="BettingTable/TableLayout/DozensRow" unique_id=717790669]
-layout_mode = 2
-
-[node name="EvenOddRedBlackRow" type="HBoxContainer" parent="BettingTable/TableLayout" unique_id=1106458895]
-layout_mode = 2
-
-[node name="LowButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=1517715909]
-layout_mode = 2
-
-[node name="EvenButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=337739665]
-layout_mode = 2
-
-[node name="RedButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=71127923]
-layout_mode = 2
-
-[node name="BlackButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=480886957]
-layout_mode = 2
-
-[node name="OddButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=1247866397]
-layout_mode = 2
-
-[node name="HighButton" type="Button" parent="BettingTable/TableLayout/EvenOddRedBlackRow" unique_id=868327758]
-layout_mode = 2
-
-[node name="ClearBetsButton" type="Button" parent="." unique_id=-961633963]
-layout_mode = 0
-offset_left = 934.0
-offset_top = 658.0
-offset_right = 1064.0
-offset_bottom = 689.0
-text = "Clear Bets"
-
-[node name="RepeatBetButton" type="Button" parent="." unique_id=741566659]
-layout_mode = 0
-offset_left = 1084.0
-offset_top = 658.0
-offset_right = 1213.0
-offset_bottom = 689.0
-text = "Repeat Last Bet"
-
-[node name="SpinManager" type="Node" parent="." unique_id=484343743]
-script = ExtResource("1_elqb8")

@@ -1,4 +1,6 @@
 using Godot;
+using System.Collections.Generic;
+using System.Linq;
 
 public partial class HUD : Control
 {
@@ -6,7 +8,6 @@ public partial class HUD : Control
 	private SpinManager _spinManager;
 	private BettingTable _bettingTable;
 	private ShopManager _shopManager;
-	private InventoryPanel _inventoryPanel;
 	private Label _statsLabel;
 	private Label _bossLabel;
 
@@ -28,13 +29,12 @@ public partial class HUD : Control
 		_gameState = GetNodeOrNull<GameState>("/root/GameState");
 		_spinManager = GetNodeOrNull<SpinManager>("../SpinManager");
 		_bettingTable = GetNodeOrNull<BettingTable>("../BettingTable");
-		_shopManager = GetNodeOrNull<ShopManager>("OverlayLayer/ShopPanel");
-		_inventoryPanel = GetNodeOrNull<InventoryPanel>("OverlayLayer/InventoryPanel");
+		_shopManager = GetNodeOrNull<ShopManager>("../OverlayLayer/ShopPanel");
 
-		var inventoryButton = GetNodeOrNull<Button>("InventoryButton");
-		if (inventoryButton != null) inventoryButton.Pressed += () => _inventoryPanel?.ToggleVisibility();
+		var optionsButton = GetNodeOrNull<Button>("BottomLeftPanel/OptionsButton");
+		if (optionsButton != null) optionsButton.Pressed += () => GD.Print("[HUD] Options button pressed");
 
-		var clearBetsButton = GetNodeOrNull<Button>("../ClearBetsButton");
+		var clearBetsButton = GetParent().GetNodeOrNull<Button>("ClearBetsButton");
 		if (clearBetsButton != null)
 		{
 			clearBetsButton.Pressed += () =>
@@ -45,11 +45,11 @@ public partial class HUD : Control
 			};
 		}
 
-		_resultPopup = GetNodeOrNull<Control>("OverlayLayer/ResultPopup");
-		_titleLabel = GetNodeOrNull<Label>("OverlayLayer/ResultPopup/TitleLabel");
-		_continueRestartButton = GetNodeOrNull<Button>("OverlayLayer/ResultPopup/ContinueRestartButton");
-		_statsLabel = GetNodeOrNull<Label>("OverlayLayer/ResultPopup/StatsLabel");
-		_bossLabel = GetNodeOrNull<Label>("BossLabel");
+		_resultPopup = GetParent().GetNodeOrNull<Control>("OverlayLayer/ResultPopup");
+		_titleLabel = GetParent().GetNodeOrNull<Label>("OverlayLayer/ResultPopup/ResultPopupTitle");
+		_continueRestartButton = GetParent().GetNodeOrNull<Button>("OverlayLayer/ResultPopup/ContinueRestartButton");
+		_statsLabel = GetParent().GetNodeOrNull<Label>("OverlayLayer/ResultPopup/StatsLabel");
+		_bossLabel = GetNodeOrNull<Label>("BottomLeftPanel/BossLabel");
 		
 		if (_bossLabel != null)
 		{
@@ -62,8 +62,8 @@ public partial class HUD : Control
 			_resultPopup.MouseFilter = Control.MouseFilterEnum.Stop;
 		}
 
-		_shopPanel = GetNodeOrNull<Control>("OverlayLayer/ShopPanel");
-		_nextRoundButton = GetNodeOrNull<Button>("OverlayLayer/ShopPanel/NextRoundButton");
+		_shopPanel = GetParent().GetNodeOrNull<Control>("OverlayLayer/ShopPanel");
+		_nextRoundButton = GetParent().GetNodeOrNull<Button>("OverlayLayer/ShopPanel/NextRoundButton");
 
 		if (_shopPanel != null)
 		{
@@ -71,10 +71,10 @@ public partial class HUD : Control
 			_shopPanel.MouseFilter = Control.MouseFilterEnum.Stop;
 		}
 
-		var spinButton = GetNodeOrNull<Button>("SpinButton");
+		var spinButton = GetParent().GetNodeOrNull<Button>("SpinButton");
 		if (spinButton != null) spinButton.Pressed += OnSpinPressed;
 
-		var repeatButton = GetNodeOrNull<Button>("../RepeatBetButton");
+		var repeatButton = GetParent().GetNodeOrNull<Button>("RepeatBetButton");
 		if (repeatButton != null)
 		{
 			repeatButton.Pressed += () =>
@@ -121,6 +121,7 @@ public partial class HUD : Control
 		_debugPanel.Visible = false;
 		_debugPanel.CustomMinimumSize = new Vector2(280, 260);
 		_debugPanel.SetPosition(new Vector2(15, 250));
+		_debugPanel.ZIndex = 999;
 
 		var vbox = new VBoxContainer();
 		vbox.AddThemeConstantOverride("separation", 6);
@@ -197,11 +198,11 @@ public partial class HUD : Control
 
 	private void OnSpinResolved(int winningNumber, int scoreGained)
 	{
-		var lastSpinLabel = GetNodeOrNull<Label>("LastSpinLabel");
+		var lastSpinLabel = GetNodeOrNull<Label>("BottomLeftPanel/LastSpinLabel");
 		if (lastSpinLabel != null)
 		{
 			string colorDesc = winningNumber == 0 ? "Green" : (WheelData.IsRed(winningNumber) ? "Red" : "Black");
-			lastSpinLabel.Text = $"Last Spin: {winningNumber} ({colorDesc}) | Gained: +{scoreGained}";
+			lastSpinLabel.Text = $"Last Spin: {winningNumber} ({colorDesc}) | +{scoreGained}";
 		}
 		RefreshLabels();
 	}
@@ -289,17 +290,44 @@ public partial class HUD : Control
 		RefreshLabels();
 	}
 	
+	private void RefreshCharmsRow()
+	{
+		var row = GetNodeOrNull<HBoxContainer>("CharmsRow");
+		if (row == null) return;
+
+		foreach (Node child in row.GetChildren()) child.QueueFree();
+
+		if (_gameState == null || _gameState.OwnedCharms == null) return;
+
+		foreach (var charm in _gameState.OwnedCharms)
+		{
+			var btn = new Button();
+			btn.Text = charm.Name;
+			btn.TooltipText = $"{charm.Name}\n{charm.Description}";
+			btn.CustomMinimumSize = new Vector2(100, 56);
+			btn.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+			btn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+			btn.MouseFilter = Control.MouseFilterEnum.Stop;
+
+			var localCharm = charm;
+			btn.Pressed += () =>
+			{
+				int sellPrice = Mathf.Max(10, localCharm.BaseCost / 2);
+				_gameState.Cash += sellPrice;
+				_gameState.OwnedCharms.Remove(localCharm);
+				GD.Print($"[HUD] Sold charm {localCharm.Name} for ${sellPrice}");
+				GetNode<EventBus>("/root/EventBus")?.EmitSignal(EventBus.SignalName.ShopUpdated);
+				RefreshLabels();
+			};
+
+			row.AddChild(btn);
+		}
+	}
+
 	private void RefreshConsumablesRow()
 	{
 		var row = GetNodeOrNull<HBoxContainer>("ConsumablesRow");
 		if (row == null) return;
-
-		// Force the container to expand past its scene-file offset limits and render on top
-		row.ZIndex = 10;
-		row.MouseFilter = Control.MouseFilterEnum.Ignore;
-		row.CustomMinimumSize = new Vector2(300, 70);
-		row.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
-		row.Alignment = BoxContainer.AlignmentMode.End;
 
 		foreach (Node child in row.GetChildren()) child.QueueFree();
 
@@ -308,11 +336,10 @@ public partial class HUD : Control
 		foreach (var consumable in _gameState.HeldConsumables.ToArray())
 		{
 			var btn = new Button();
-			btn.Text = $"{consumable.Name}\n[Click to Use]";
-			btn.Disabled = false; 
-			btn.MouseFilter = Control.MouseFilterEnum.Stop; // Ensures full-rect mouse detection
+			btn.Text = $"{consumable.Name}\n[Use]";
+			btn.MouseFilter = Control.MouseFilterEnum.Stop;
 			btn.TooltipText = consumable.Description;
-			btn.CustomMinimumSize = new Vector2(130, 56);
+			btn.CustomMinimumSize = new Vector2(90, 56);
 			btn.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
 			btn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
 
@@ -330,22 +357,6 @@ public partial class HUD : Control
 
 			row.AddChild(btn);
 		}
-
-		var peekedLabel = GetNodeOrNull<Label>("PeekedNumberLabel");
-		if (peekedLabel != null)
-		{
-			if (_gameState.PeekedNextNumber.HasValue)
-			{
-				int n = _gameState.PeekedNextNumber.Value;
-				string colorDesc = n == 0 ? "Green" : (WheelData.IsRed(n) ? "Red" : "Black");
-				peekedLabel.Visible = true;
-				peekedLabel.Text = $"🔒 Next Spin Locked: {n} ({colorDesc})";
-			}
-			else
-			{
-				peekedLabel.Visible = false;
-			}
-		}
 	}
 
 	private void RefreshLabels()
@@ -353,32 +364,30 @@ public partial class HUD : Control
 		if (_gameState == null) return;
 
 		var chipsLabel = GetNodeOrNull<Label>("ChipsLabel");
-		var spinsLabel = GetNodeOrNull<Label>("SpinsLabel");
+		var spinsLabel = GetNodeOrNull<Label>("BottomLeftPanel/SpinsLabel");
 		var scoreLabel = GetNodeOrNull<Label>("ScoreLabel");
-		var roundLabel = GetNodeOrNull<Label>("RoundLabel");
+		var roundLabel = GetNodeOrNull<Label>("BottomLeftPanel/RoundLabel");
 		var cashLabel = GetNodeOrNull<Label>("CashLabel");
-		var shopCashLabel = GetNodeOrNull<Label>("OverlayLayer/ShopPanel/ShopCashLabel");
-		var charmsSlotsLabel = GetNodeOrNull<Label>("CharmsSlotsLabel");
-		var peekLabel = GetNodeOrNull<Label>("PeekedNumberLabel");
+		var shopCashLabel = GetParent().GetNodeOrNull<Label>("OverlayLayer/ShopPanel/ShopCashLabel");
+		var peekLabel = GetNodeOrNull<Label>("BottomLeftPanel/PeekedNumberLabel");
 
 		if (chipsLabel != null) chipsLabel.Text = $"Chips: {_gameState.ChipsRemainingThisSpin}";
-		if (spinsLabel != null) spinsLabel.Text = $"Spins: {_gameState.SpinsRemaining}";
+		if (spinsLabel != null) spinsLabel.Text = $"Spins Remaining: {_gameState.SpinsRemaining}";
 		if (scoreLabel != null) scoreLabel.Text = $"Score: {_gameState.Score} / {_gameState.ScoreGoal}";
-		if (cashLabel != null) cashLabel.Text = $"Cash: ${_gameState.Cash}";
+		if (cashLabel != null) cashLabel.Text = $"Money: ${_gameState.Cash}";
 		if (shopCashLabel != null) shopCashLabel.Text = $"Available Cash: ${_gameState.Cash}";
-		if (charmsSlotsLabel != null) charmsSlotsLabel.Text = $"Charms: {_gameState.OwnedCharms.Count}/{_gameState.MaxCharmSlots}";
 		
 		if (peekLabel != null)
 		{
 			peekLabel.Visible = _gameState.PeekedNextNumber.HasValue;
 			if (_gameState.PeekedNextNumber.HasValue)
-				peekLabel.Text = $"Peek: Next is {_gameState.PeekedNextNumber.Value}";
+				peekLabel.Text = $"🔒 Peek: Next is {_gameState.PeekedNextNumber.Value}";
 		}
 
 		if (roundLabel != null)
 		{
 			string roundName = _gameState.RoundInStake == GameState.RoundsPerStake ? "BOSS ROUND" : $"Round {_gameState.RoundInStake}";
-			roundLabel.Text = $"Stake {_gameState.Stake}/{GameState.TotalStakes} — {roundName}";
+			roundLabel.Text = $"Round: {_gameState.RoundInStake} ({roundName})";
 		}
 
 		if (_bossLabel != null)
@@ -386,7 +395,7 @@ public partial class HUD : Control
 			if (_gameState.ActiveBoss != null)
 			{
 				_bossLabel.Visible = true;
-				_bossLabel.Text = $"⚠ Boss: {_gameState.ActiveBoss.Name} (Hover)";
+				_bossLabel.Text = $"⚠ Boss: {_gameState.ActiveBoss.Name}";
 				_bossLabel.TooltipText = $"{_gameState.ActiveBoss.Name}\n{_gameState.ActiveBoss.Description}";
 				_bossLabel.MouseFilter = Control.MouseFilterEnum.Stop;
 			}
@@ -396,7 +405,7 @@ public partial class HUD : Control
 			}
 		}
 
-		RefreshConsumablesRow(); // <-- Ensures consumables row updates properly every frame/signal
+		RefreshCharmsRow();
+		RefreshConsumablesRow();
 	}
-	
 }
