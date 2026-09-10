@@ -10,7 +10,6 @@ public partial class InventoryPanel : Control
 	{
 		_gameState = GetNode<GameState>("/root/GameState");
 		
-		// Updated paths to include the new ScrollContainers!
 		_upgradesList = GetNode<VBoxContainer>("CenterContainer/PanelBackground/UpgradesScroll/UpgradesList");
 		_charmsList = GetNode<VBoxContainer>("CenterContainer/PanelBackground/CharmsScroll/CharmsList");
 
@@ -42,27 +41,33 @@ public partial class InventoryPanel : Control
 		foreach (Node child in _upgradesList.GetChildren()) child.QueueFree();
 		foreach (Node child in _charmsList.GetChildren()) child.QueueFree();
 
-		// Upgrades List (Non-Sellable)
-		if (_gameState.OwnedUpgrades.Count == 0)
+		// Upgrades List (Stacked Map display)
+		if (_gameState.OwnedUpgradesMap.Count == 0)
 		{
 			_upgradesList.AddChild(new Label { Text = "(none yet)" });
 		}
 		else
 		{
-			foreach (var upgrade in _gameState.OwnedUpgrades)
+			foreach (var kvp in _gameState.OwnedUpgradesMap)
 			{
-				var lbl = new Label 
-				{ 
-					Text = $"{upgrade.Name} — {upgrade.Description}", 
-					AutowrapMode = TextServer.AutowrapMode.WordSmart,
-					SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill
-				};
-				lbl.CustomMinimumSize = new Vector2(400, 0);
-				_upgradesList.AddChild(lbl);
+				string upgradeId = kvp.Key;
+				int level = kvp.Value;
+
+				if (_gameState.UpgradeDefinitionsMap.TryGetValue(upgradeId, out var def))
+				{
+					var lbl = new Label 
+					{ 
+						Text = $"{def.Name} (Lvl {level}) — {def.Description}", 
+						AutowrapMode = TextServer.AutowrapMode.WordSmart,
+						SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill
+					};
+					lbl.CustomMinimumSize = new Vector2(400, 0);
+					_upgradesList.AddChild(lbl);
+				}
 			}
 		}
 
-		// Charms List (Sellable)
+		// Charms List (Single Unified Clickable Sell Button per Charm)
 		if (_gameState.OwnedCharms.Count == 0)
 		{
 			_charmsList.AddChild(new Label { Text = "(none yet)" });
@@ -71,21 +76,15 @@ public partial class InventoryPanel : Control
 		{
 			foreach (var charm in _gameState.OwnedCharms.ToArray())
 			{
-				var row = new HBoxContainer();
-				row.AddThemeConstantOverride("separation", 10);
-
-				var lbl = new Label 
-				{ 
-					Text = $"{charm.Name} — {charm.Description}", 
-					AutowrapMode = TextServer.AutowrapMode.WordSmart,
-					SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill
-				};
-				lbl.CustomMinimumSize = new Vector2(300, 0);
-				row.AddChild(lbl);
-
 				int sellPrice = Mathf.Max(10, charm.BaseCost / 2);
-				var sellBtn = new Button { Text = $"Sell (${sellPrice})" };
-				sellBtn.Pressed += () =>
+
+				var charmBtn = new Button();
+				charmBtn.Text = $"{charm.Name}\n{charm.Description}\n[Click to Sell for ${sellPrice}]";
+				charmBtn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+				charmBtn.CustomMinimumSize = new Vector2(380, 75);
+				charmBtn.SizeFlagsHorizontal = Control.SizeFlags.Expand | Control.SizeFlags.Fill;
+
+				charmBtn.Pressed += () =>
 				{
 					_gameState.Cash += sellPrice;
 					_gameState.OwnedCharms.Remove(charm);
@@ -93,9 +92,8 @@ public partial class InventoryPanel : Control
 					GetNode<EventBus>("/root/EventBus").EmitSignal(EventBus.SignalName.ShopUpdated);
 					RefreshLists();
 				};
-				row.AddChild(sellBtn);
 
-				_charmsList.AddChild(row);
+				_charmsList.AddChild(charmBtn);
 			}
 		}
 	}

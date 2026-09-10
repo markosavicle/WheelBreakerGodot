@@ -288,71 +288,46 @@ public partial class HUD : Control
 		_isRoundOver = false;
 		RefreshLabels();
 	}
-
-	private void RefreshLabels()
-	{
-		if (_gameState == null) return;
-
-		var chipsLabel = GetNodeOrNull<Label>("ChipsLabel");
-		var spinsLabel = GetNodeOrNull<Label>("SpinsLabel");
-		var scoreLabel = GetNodeOrNull<Label>("ScoreLabel");
-		var roundLabel = GetNodeOrNull<Label>("RoundLabel");
-		var cashLabel = GetNodeOrNull<Label>("CashLabel");
-		var shopCashLabel = GetNodeOrNull<Label>("OverlayLayer/ShopPanel/ShopCashLabel");
-		var charmsSlotsLabel = GetNodeOrNull<Label>("CharmsSlotsLabel");
-		var repeatBtn = GetNodeOrNull<Button>("../RepeatBetButton");
-
-		if (repeatBtn != null) repeatBtn.Disabled = _gameState.ActiveBoss?.BlocksRepeatBet == true;
-		if (chipsLabel != null) chipsLabel.Text = $"Chips: {_gameState.ChipsRemainingThisSpin}";
-		if (spinsLabel != null) spinsLabel.Text = $"Spins: {_gameState.SpinsRemaining}";
-		if (scoreLabel != null) scoreLabel.Text = $"Score: {_gameState.Score} / {_gameState.ScoreGoal}";
-		if (cashLabel != null) cashLabel.Text = $"Cash: ${_gameState.Cash}";
-		if (shopCashLabel != null) shopCashLabel.Text = $"Available Cash: ${_gameState.Cash}";
-		if (charmsSlotsLabel != null) charmsSlotsLabel.Text = $"Charms: {_gameState.OwnedCharms.Count}/{_gameState.MaxCharmSlots}";
-		
-		if (roundLabel != null)
-		{
-			string roundName = _gameState.RoundInStake == GameState.RoundsPerStake ? "BOSS ROUND" : $"Round {_gameState.RoundInStake}";
-			roundLabel.Text = $"Stake {_gameState.Stake}/{GameState.TotalStakes} — {roundName}";
-		}
-
-		if (_bossLabel != null)
-		{
-			if (_gameState.ActiveBoss != null)
-			{
-				_bossLabel.Visible = true;
-				_bossLabel.Text = $"⚠ Boss: {_gameState.ActiveBoss.Name} (Hover)";
-				_bossLabel.TooltipText = $"{_gameState.ActiveBoss.Name}\n{_gameState.ActiveBoss.Description}";
-			}
-			else
-			{
-				_bossLabel.Visible = false;
-			}
-		}
-		RefreshConsumablesRow();
-	}
 	
 	private void RefreshConsumablesRow()
 	{
 		var row = GetNodeOrNull<HBoxContainer>("ConsumablesRow");
 		if (row == null) return;
 
+		// Force the container to expand past its scene-file offset limits and render on top
+		row.ZIndex = 10;
+		row.MouseFilter = Control.MouseFilterEnum.Ignore;
+		row.CustomMinimumSize = new Vector2(300, 70);
+		row.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+		row.Alignment = BoxContainer.AlignmentMode.End;
+
 		foreach (Node child in row.GetChildren()) child.QueueFree();
+
+		if (_gameState == null || _gameState.HeldConsumables == null) return;
 
 		foreach (var consumable in _gameState.HeldConsumables.ToArray())
 		{
-			bool usable = consumable.CanUse == null || consumable.CanUse(_gameState);
 			var btn = new Button();
-			btn.Text = usable ? $"{consumable.Name}\n(Use)" : $"{consumable.Name}\n(N/A)";
-			btn.Disabled = !usable;
+			btn.Text = $"{consumable.Name}\n[Click to Use]";
+			btn.Disabled = false; 
+			btn.MouseFilter = Control.MouseFilterEnum.Stop; // Ensures full-rect mouse detection
 			btn.TooltipText = consumable.Description;
+			btn.CustomMinimumSize = new Vector2(130, 56);
+			btn.SizeFlagsVertical = Control.SizeFlags.ShrinkCenter;
+			btn.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+
 			btn.Pressed += () =>
 			{
-				consumable.Use(_gameState);
+				if (_isRoundOver) return;
+				
+				consumable.Use?.Invoke(_gameState);
 				_gameState.HeldConsumables.Remove(consumable);
-				GD.Print($"[HUD] Used consumable: {consumable.Name}");
+				
+				GD.Print($"[HUD] Successfully used consumable: {consumable.Name}");
 				RefreshLabels();
+				GetNode<EventBus>("/root/EventBus")?.EmitSignal(EventBus.SignalName.BetPlaced);
 			};
+
 			row.AddChild(btn);
 		}
 
@@ -372,4 +347,56 @@ public partial class HUD : Control
 			}
 		}
 	}
+
+	private void RefreshLabels()
+	{
+		if (_gameState == null) return;
+
+		var chipsLabel = GetNodeOrNull<Label>("ChipsLabel");
+		var spinsLabel = GetNodeOrNull<Label>("SpinsLabel");
+		var scoreLabel = GetNodeOrNull<Label>("ScoreLabel");
+		var roundLabel = GetNodeOrNull<Label>("RoundLabel");
+		var cashLabel = GetNodeOrNull<Label>("CashLabel");
+		var shopCashLabel = GetNodeOrNull<Label>("OverlayLayer/ShopPanel/ShopCashLabel");
+		var charmsSlotsLabel = GetNodeOrNull<Label>("CharmsSlotsLabel");
+		var peekLabel = GetNodeOrNull<Label>("PeekedNumberLabel");
+
+		if (chipsLabel != null) chipsLabel.Text = $"Chips: {_gameState.ChipsRemainingThisSpin}";
+		if (spinsLabel != null) spinsLabel.Text = $"Spins: {_gameState.SpinsRemaining}";
+		if (scoreLabel != null) scoreLabel.Text = $"Score: {_gameState.Score} / {_gameState.ScoreGoal}";
+		if (cashLabel != null) cashLabel.Text = $"Cash: ${_gameState.Cash}";
+		if (shopCashLabel != null) shopCashLabel.Text = $"Available Cash: ${_gameState.Cash}";
+		if (charmsSlotsLabel != null) charmsSlotsLabel.Text = $"Charms: {_gameState.OwnedCharms.Count}/{_gameState.MaxCharmSlots}";
+		
+		if (peekLabel != null)
+		{
+			peekLabel.Visible = _gameState.PeekedNextNumber.HasValue;
+			if (_gameState.PeekedNextNumber.HasValue)
+				peekLabel.Text = $"Peek: Next is {_gameState.PeekedNextNumber.Value}";
+		}
+
+		if (roundLabel != null)
+		{
+			string roundName = _gameState.RoundInStake == GameState.RoundsPerStake ? "BOSS ROUND" : $"Round {_gameState.RoundInStake}";
+			roundLabel.Text = $"Stake {_gameState.Stake}/{GameState.TotalStakes} — {roundName}";
+		}
+
+		if (_bossLabel != null)
+		{
+			if (_gameState.ActiveBoss != null)
+			{
+				_bossLabel.Visible = true;
+				_bossLabel.Text = $"⚠ Boss: {_gameState.ActiveBoss.Name} (Hover)";
+				_bossLabel.TooltipText = $"{_gameState.ActiveBoss.Name}\n{_gameState.ActiveBoss.Description}";
+				_bossLabel.MouseFilter = Control.MouseFilterEnum.Stop;
+			}
+			else
+			{
+				_bossLabel.Visible = false;
+			}
+		}
+
+		RefreshConsumablesRow(); // <-- Ensures consumables row updates properly every frame/signal
+	}
+	
 }

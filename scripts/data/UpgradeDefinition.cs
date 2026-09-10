@@ -16,4 +16,9 @@ public class UpgradeDefinition : IShopOffer
 		BaseCost = baseCost;
 		Apply = apply;
 	}
+
+	public void ApplyEffect(GameState gs)
+	{
+		Apply?.Invoke(gs);
+	}
 }

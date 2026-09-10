@@ -22,7 +22,6 @@ public partial class GameState : Node
 
 	public int Score;
 	public int ScoreGoal;
-
 	public int Cash = 0;
 
 	public int FlatRoundReward = 25;
@@ -33,37 +32,47 @@ public partial class GameState : Node
 	public int BonusSpinsPerRound = 0;
 	public float GlobalPayoutMultiplier = 1.0f;
 
-	// Admin Debug Support Property
 	public int? DebugForcedWinningNumber = null;
-
 	public RunStats Stats = new RunStats();
-
 	public List<Bet> ActiveBets = new List<Bet>();
 
 	public List<CharmDefinition> OwnedCharms = new List<CharmDefinition>();
 	public int MaxCharmSlots = 5;
-	public List<UpgradeDefinition> OwnedUpgrades = new List<UpgradeDefinition>();
-	
+
+	// Stackable Upgrades Map: Key = Upgrade ID, Value = Level/Count
+	public Dictionary<string, int> OwnedUpgradesMap = new Dictionary<string, int>();
+	public Dictionary<string, UpgradeDefinition> UpgradeDefinitionsMap = new Dictionary<string, UpgradeDefinition>();
+
 	public Dictionary<BetCategory, float> CategoryPayoutBonus = new Dictionary<BetCategory, float>();
 	
 	public List<ConsumableDefinition> HeldConsumables = new List<ConsumableDefinition>();
 	public int MaxConsumableSlots = 2;
 	public int? PeekedNextNumber = null;
 
-
 	private RandomNumberGenerator _rng = new RandomNumberGenerator();
 
 	public override void _Ready()
 	{
 		_rng.Randomize();
+		foreach (var up in UpgradePool.All)
+			UpgradeDefinitionsMap[up.Id] = up;
 		StartNewRound();
+	}
+
+	public void AddUpgrade(UpgradeDefinition def)
+	{
+		if (!OwnedUpgradesMap.ContainsKey(def.Id))
+			OwnedUpgradesMap[def.Id] = 0;
+		OwnedUpgradesMap[def.Id]++;
+		
+		// Apply immediate effect
+		def.ApplyEffect(this);
 	}
 
 	public void StartNewRound()
 	{
 		RoundInStake = ((RoundNumber - 1) % RoundsPerStake) + 1;
 		Stake = ((RoundNumber - 1) / RoundsPerStake) + 1;
-
 		ActiveBoss = (RoundInStake == RoundsPerStake) ? PickRandomBoss() : null;
 
 		SpinsRemaining = SpinsPerRound + BonusSpinsPerRound;
@@ -72,23 +81,18 @@ public partial class GameState : Node
 		StartNewSpin();
 
 		GetNodeOrNull<EventBus>("/root/EventBus")?.EmitSignal(EventBus.SignalName.RoundStarted);
-
-		if (ActiveBoss != null)
-			GD.Print($"[GameState] BOSS ROUND — {ActiveBoss.Name}: {ActiveBoss.Description}");
 	}
 
 	public void StartNewSpin()
 	{
 		int baseChips = ChipsPerSpin + BonusChipsPerSpin;
-
 		foreach (var charm in OwnedCharms)
 		{
 			if (charm.ModifyChipsPerSpin != null)
 				baseChips = charm.ModifyChipsPerSpin(this, baseChips);
 		}
-
 		if (ActiveBoss?.ModifyChipsPerSpin != null)
-			baseChips = ActiveBoss.ModifyChipsPerSpin(this, baseChips);  // signature change — see boss section
+			baseChips = ActiveBoss.ModifyChipsPerSpin(this, baseChips);
 
 		ChipsRemainingThisSpin = Mathf.Max(0, baseChips);
 		ActiveBets.Clear();
@@ -103,23 +107,15 @@ public partial class GameState : Node
 	private int CalculateScoreGoal(int stake, int roundInStake)
 	{
 		float stakeBase = 100f * Mathf.Pow(1.6f, stake - 1);
-		float roundMultiplier = roundInStake switch
-		{
-			1 => 1.0f,
-			2 => 1.5f,
-			3 => 2.2f,
-			_ => 1.0f
-		};
+		float roundMultiplier = roundInStake switch { 1 => 1.0f, 2 => 1.5f, 3 => 2.2f, _ => 1.0f };
 		return Mathf.RoundToInt(stakeBase * roundMultiplier);
 	}
 
 	public void ResetRun()
 	{
 		Stats = new RunStats();
-
 		RoundNumber = 1;
 		Cash = 0;
-
 		BonusSpinsPerRound = 0;
 		BonusChipsPerSpin = 0;
 		GlobalPayoutMultiplier = 1.0f;
@@ -128,33 +124,45 @@ public partial class GameState : Node
 		RerollCostDiscount = 0;
 
 		OwnedCharms.Clear();
-		OwnedUpgrades.Clear();
+		OwnedUpgradesMap.Clear();
 		CategoryPayoutBonus.Clear();
-		
 		HeldConsumables.Clear();
 		PeekedNextNumber = null;
 
 		StartNewRound();
-		GD.Print("[GameState] Run reset completely.");
 	}
 
 	public int GrantRoundCashReward()
 	{
 		int bonusCash = SpinsRemaining * CashPerRemainingSpin;
 		int totalEarned = FlatRoundReward + bonusCash;
-
 		foreach (var charm in OwnedCharms)
 		{
 			if (charm.ModifyRoundCashReward != null)
 				totalEarned = charm.ModifyRoundCashReward(this, totalEarned);
 		}
-
 		Stats.TotalCashEarned += totalEarned;
 		Cash += totalEarned;
 		return totalEarned;
 	}
 
-	public int GetModifiedUpgradeCost(int baseCost)
+	public void AdvanceToNextRound()
+	{
+		Stats.RoundsSurvived++;
+		RoundNumber++;
+		StartNewRound();
+	}
+
+	public void AddCategoryBonus(BetCategory category, float amount)
+	{
+		if (!CategoryPayoutBonus.ContainsKey(category)) CategoryPayoutBonus[category] = 0f;
+		CategoryPayoutBonus[category] += amount;
+	}
+
+	public float GetCategoryBonus(BetType type) =>
+		CategoryPayoutBonus.TryGetValue(WheelData.GetCategory(type), out float bonus) ? bonus : 0f;
+		
+		public int GetModifiedUpgradeCost(int baseCost)
 	{
 		int cost = baseCost;
 		foreach (var charm in OwnedCharms)
@@ -164,20 +172,4 @@ public partial class GameState : Node
 		}
 		return cost;
 	}
-
-	public void AdvanceToNextRound()
-	{
-		Stats.RoundsSurvived++;
-		RoundNumber++;
-		StartNewRound();
-	}
-	
-	public void AddCategoryBonus(BetCategory category, float amount)
-	{
-		if (!CategoryPayoutBonus.ContainsKey(category)) CategoryPayoutBonus[category] = 0f;
-		CategoryPayoutBonus[category] += amount;
-	}
-
-	public float GetCategoryBonus(BetType type) =>
-		CategoryPayoutBonus.TryGetValue(WheelData.GetCategory(type), out float bonus) ? bonus : 0f;
 }
