@@ -43,6 +43,13 @@ public partial class GameState : Node
 	public List<CharmDefinition> OwnedCharms = new List<CharmDefinition>();
 	public int MaxCharmSlots = 5;
 	public List<UpgradeDefinition> OwnedUpgrades = new List<UpgradeDefinition>();
+	
+	public Dictionary<BetCategory, float> CategoryPayoutBonus = new Dictionary<BetCategory, float>();
+	
+	public List<ConsumableDefinition> HeldConsumables = new List<ConsumableDefinition>();
+	public int MaxConsumableSlots = 2;
+	public int? PeekedNextNumber = null;
+
 
 	private RandomNumberGenerator _rng = new RandomNumberGenerator();
 
@@ -74,13 +81,14 @@ public partial class GameState : Node
 	{
 		int baseChips = ChipsPerSpin + BonusChipsPerSpin;
 
-		if (OwnedCharms.Any(c => c.Id == "croupier_gloves") && Score < (ScoreGoal / 2))
+		foreach (var charm in OwnedCharms)
 		{
-			baseChips += 20;
+			if (charm.ModifyChipsPerSpin != null)
+				baseChips = charm.ModifyChipsPerSpin(this, baseChips);
 		}
 
 		if (ActiveBoss?.ModifyChipsPerSpin != null)
-			baseChips = ActiveBoss.ModifyChipsPerSpin(baseChips);
+			baseChips = ActiveBoss.ModifyChipsPerSpin(this, baseChips);  // signature change — see boss section
 
 		ChipsRemainingThisSpin = Mathf.Max(0, baseChips);
 		ActiveBets.Clear();
@@ -121,6 +129,10 @@ public partial class GameState : Node
 
 		OwnedCharms.Clear();
 		OwnedUpgrades.Clear();
+		CategoryPayoutBonus.Clear();
+		
+		HeldConsumables.Clear();
+		PeekedNextNumber = null;
 
 		StartNewRound();
 		GD.Print("[GameState] Run reset completely.");
@@ -159,4 +171,13 @@ public partial class GameState : Node
 		RoundNumber++;
 		StartNewRound();
 	}
+	
+	public void AddCategoryBonus(BetCategory category, float amount)
+	{
+		if (!CategoryPayoutBonus.ContainsKey(category)) CategoryPayoutBonus[category] = 0f;
+		CategoryPayoutBonus[category] += amount;
+	}
+
+	public float GetCategoryBonus(BetType type) =>
+		CategoryPayoutBonus.TryGetValue(WheelData.GetCategory(type), out float bonus) ? bonus : 0f;
 }

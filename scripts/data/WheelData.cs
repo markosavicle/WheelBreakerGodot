@@ -41,4 +41,17 @@ public static class WheelData
 			default: return false;
 		}
 	}
+	
+	public static BetCategory GetCategory(BetType type)
+	{
+		return type switch
+		{
+			BetType.Straight => BetCategory.Straight,
+			BetType.Dozen1 or BetType.Dozen2 or BetType.Dozen3 => BetCategory.Dozen,
+			BetType.Red or BetType.Black => BetCategory.Color,
+			BetType.Odd or BetType.Even => BetCategory.Parity,
+			BetType.Low or BetType.High => BetCategory.HighLow,
+			_ => BetCategory.Straight
+		};
+	}
 }

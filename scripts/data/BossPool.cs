@@ -5,14 +5,9 @@ public static class BossPool
 {
 	public static List<BossDefinition> All = new List<BossDefinition>
 	{
-		CreateColorblindDealer(),
-		CreateParityEnforcer(),
-		CreateSkinflint(),
-		CreatePickpocket(),
-		CreateDoubleDownDealer(),
-		CreateThePurist(),
-		CreateTheGrinder(),
-		CreateTheSpecialist(),
+		CreateColorblindDealer(), CreateParityEnforcer(), CreateSkinflint(), CreatePickpocket(),
+		CreateDoubleDownDealer(), CreateThePurist(), CreateTheGrinder(), CreateTheSpecialist(),
+		CreateTheLoanShark(), CreateTheAuditor(), CreateCreatureOfHabit(), CreateTheLandlord(), CreateTheVoid(),
 	};
 
 	private static BossDefinition CreateColorblindDealer()
@@ -43,7 +38,7 @@ public static class BossPool
 	{
 		var b = new BossDefinition("pickpocket", "The Pickpocket",
 			"Chips per spin are halved this round.");
-		b.ModifyChipsPerSpin = (baseChips) => Mathf.Max(1, baseChips / 2);
+		b.ModifyChipsPerSpin = (gs, baseChips) => Mathf.Max(1, baseChips / 2); 
 		return b;
 	}
 
@@ -83,6 +78,55 @@ public static class BossPool
 		// Allow up to 5 distinct bets to match max charm slots
 		b.MaxDistinctBetButtons = () => 5;
 		
+		return b;
+	}
+	
+	// Chip budget pressure
+	private static BossDefinition CreateTheLoanShark()
+	{
+		var b = new BossDefinition("the_loan_shark", "The Loan Shark",
+			"Chips per spin shrink by 5 with every spin you take this round.");
+		b.ModifyChipsPerSpin = (gs, baseChips) =>
+		{
+			int spinsUsed = gs.SpinsPerRound + gs.BonusSpinsPerRound - gs.SpinsRemaining;
+			return Mathf.Max(1, baseChips - (spinsUsed * 5));
+		};
+		return b;
+	}
+
+	// Chip budget pressure — punishes holding back instead of chasing decay
+	private static BossDefinition CreateTheAuditor()
+	{
+		var b = new BossDefinition("the_auditor", "The Auditor",
+			"Any chips left unspent this spin are deducted directly from your score.");
+		b.ModifyFinalSpinScore = (gs, bets, total) => total - gs.ChipsRemainingThisSpin;
+		return b;
+	}
+
+	// Repeat-bet restriction
+	private static BossDefinition CreateCreatureOfHabit()
+	{
+		var b = new BossDefinition("creature_of_habit", "Creature of Habit",
+			"Repeat Last Bet is disabled this round.");
+		b.BlocksRepeatBet = true;
+		return b;
+	}
+
+	// Empty-spot penalty
+	private static BossDefinition CreateTheLandlord()
+	{
+		var b = new BossDefinition("the_landlord", "The Landlord",
+			"Score is halved if you bet on fewer than 3 spots this spin.");
+		b.ModifyFinalSpinScore = (gs, bets, total) => bets.Count < 3 ? total / 2 : total;
+		return b;
+	}
+
+	// Empty-spot penalty — sharper version
+	private static BossDefinition CreateTheVoid()
+	{
+		var b = new BossDefinition("the_void", "The Void",
+			"Betting on only a single spot scores nothing this round.");
+		b.ModifyFinalSpinScore = (gs, bets, total) => bets.Count == 1 ? 0 : total;
 		return b;
 	}
 }

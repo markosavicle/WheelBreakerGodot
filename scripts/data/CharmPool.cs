@@ -121,21 +121,26 @@ public static class CharmPool
 	private static CharmDefinition CreateRouletteTableMat()
 	{
 		var j = new CharmDefinition("table_mat", "Felt Table Mat",
-			"Increases global payout multiplier by +0.1x for every charm currently owned.", 40);
+			"Increases score from winning bets by +10% for every charm currently owned.", 40);
+		j.ModifyBetScore = (gs, bet, winningNumber, baseScore) =>
+			Mathf.RoundToInt(baseScore * (1f + 0.1f * gs.OwnedCharms.Count));
 		return j;
 	}
 
 	private static CharmDefinition CreateCroupierGloves()
 	{
 		var j = new CharmDefinition("croupier_gloves", "Croupier's Gloves",
-			"Gain +20 extra chips per spin if your current score is below half the goal.", 35);
+			"Gain +20 extra chips per spin while your score is below half the goal.", 35);
+		j.ModifyChipsPerSpin = (gs, baseChips) => gs.Score < (gs.ScoreGoal / 2) ? baseChips + 20 : baseChips;
 		return j;
 	}
 
 	private static CharmDefinition CreateMidnightOil()
 	{
 		var j = new CharmDefinition("midnight_oil", "Midnight Oil",
-			"The final spin of every round grants double score if it hits.", 45);
+			"The final spin of every round scores double if it hits.", 45);
+		j.ModifyBetScore = (gs, bet, winningNumber, baseScore) =>
+			gs.SpinsRemaining == 1 ? baseScore * 2 : baseScore;
 		return j;
 	}
 }

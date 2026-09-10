@@ -38,12 +38,16 @@ public partial class ShopManager : Control
 	{
 		var ownedCharmIds = _gameState.OwnedCharms.Select(j => j.Id).ToHashSet();
 		bool charmSlotsFull = _gameState.OwnedCharms.Count >= _gameState.MaxCharmSlots;
+		bool consumableSlotsFull = _gameState.HeldConsumables.Count >= _gameState.MaxConsumableSlots;
 
 		var pool = new List<IShopOffer>();
 		pool.AddRange(UpgradePool.All);
 
 		if (!charmSlotsFull)
 			pool.AddRange(CharmPool.All.Where(j => !ownedCharmIds.Contains(j.Id)));
+
+		if (!consumableSlotsFull)
+			pool.AddRange(ConsumablePool.All); // stackable, like Upgrades — no ID filter
 
 		return pool;
 	}
@@ -91,6 +95,12 @@ public partial class ShopManager : Control
 			GD.Print("[Shop] Charm slots full — cannot purchase.");
 			return;
 		}
+		
+		if (offer is ConsumableDefinition && _gameState.HeldConsumables.Count >= _gameState.MaxConsumableSlots)
+		{
+			GD.Print("[Shop] Consumable pocket full — cannot purchase.");
+			return;
+		}
 
 		_gameState.Cash -= cost;
 
@@ -120,7 +130,12 @@ public partial class ShopManager : Control
 			int displayCost = offer is UpgradeDefinition
 				? _gameState.GetModifiedUpgradeCost(offer.BaseCost)
 				: offer.BaseCost;
-			string tag = offer is CharmDefinition ? "[CHARM] " : "";
+			string tag = offer switch
+			{
+				CharmDefinition => "[CHARM] ",
+				ConsumableDefinition => "[TAROT] ",
+				_ => ""
+			};
 
 			var btn = new Button();
 			btn.Text = $"{tag}{offer.Name}\n{offer.Description}\n${displayCost}";

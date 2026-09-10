@@ -7,3 +7,12 @@ public enum BetType
 	Dozen1, Dozen2, Dozen3,
 	// Split, Street, Corner intentionally deferred — add once Straight/outside bets are proven fun
 }
+
+public enum BetCategory
+{
+	Straight,
+	Dozen,
+	Color,
+	Parity,
+	HighLow
+}

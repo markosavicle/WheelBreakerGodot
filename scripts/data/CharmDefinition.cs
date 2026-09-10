@@ -26,6 +26,16 @@ public class CharmDefinition : IShopOffer
 
 	// (gameState, baseCash) -> modified cash. Applied once at round-clear.
 	public Func<GameState, int, int> ModifyRoundCashReward;
+	
+	// (gameState, baseChips) -> modified chips-per-spin. Evaluated every spin.
+	public Func<GameState, int, int> ModifyChipsPerSpin;
+	
+	// NEW: (gameState, activeBets, totalScoreThisSpin) -> modified total.
+	// Fires once per spin AFTER all individual bets + charm bonuses are summed —
+	// this is the hook for anything that needs to see the whole bet spread at once.
+	public Func<GameState, List<Bet>, int, int> ModifyFinalSpinScore;
+	
+	public bool BlocksRepeatBet = false;
 
 	public CharmDefinition(string id, string name, string description, int baseCost)
 	{

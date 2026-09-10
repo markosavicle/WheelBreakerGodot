@@ -50,6 +50,11 @@ public partial class HUD : Control
 		_continueRestartButton = GetNodeOrNull<Button>("OverlayLayer/ResultPopup/ContinueRestartButton");
 		_statsLabel = GetNodeOrNull<Label>("OverlayLayer/ResultPopup/StatsLabel");
 		_bossLabel = GetNodeOrNull<Label>("BossLabel");
+		
+		if (_bossLabel != null)
+		{
+			_bossLabel.MouseFilter = Control.MouseFilterEnum.Stop;
+		}
 
 		if (_resultPopup != null)
 		{
@@ -295,14 +300,16 @@ public partial class HUD : Control
 		var cashLabel = GetNodeOrNull<Label>("CashLabel");
 		var shopCashLabel = GetNodeOrNull<Label>("OverlayLayer/ShopPanel/ShopCashLabel");
 		var charmsSlotsLabel = GetNodeOrNull<Label>("CharmsSlotsLabel");
+		var repeatBtn = GetNodeOrNull<Button>("../RepeatBetButton");
 
+		if (repeatBtn != null) repeatBtn.Disabled = _gameState.ActiveBoss?.BlocksRepeatBet == true;
 		if (chipsLabel != null) chipsLabel.Text = $"Chips: {_gameState.ChipsRemainingThisSpin}";
 		if (spinsLabel != null) spinsLabel.Text = $"Spins: {_gameState.SpinsRemaining}";
 		if (scoreLabel != null) scoreLabel.Text = $"Score: {_gameState.Score} / {_gameState.ScoreGoal}";
 		if (cashLabel != null) cashLabel.Text = $"Cash: ${_gameState.Cash}";
 		if (shopCashLabel != null) shopCashLabel.Text = $"Available Cash: ${_gameState.Cash}";
 		if (charmsSlotsLabel != null) charmsSlotsLabel.Text = $"Charms: {_gameState.OwnedCharms.Count}/{_gameState.MaxCharmSlots}";
-
+		
 		if (roundLabel != null)
 		{
 			string roundName = _gameState.RoundInStake == GameState.RoundsPerStake ? "BOSS ROUND" : $"Round {_gameState.RoundInStake}";
@@ -320,6 +327,48 @@ public partial class HUD : Control
 			else
 			{
 				_bossLabel.Visible = false;
+			}
+		}
+		RefreshConsumablesRow();
+	}
+	
+	private void RefreshConsumablesRow()
+	{
+		var row = GetNodeOrNull<HBoxContainer>("ConsumablesRow");
+		if (row == null) return;
+
+		foreach (Node child in row.GetChildren()) child.QueueFree();
+
+		foreach (var consumable in _gameState.HeldConsumables.ToArray())
+		{
+			bool usable = consumable.CanUse == null || consumable.CanUse(_gameState);
+			var btn = new Button();
+			btn.Text = usable ? $"{consumable.Name}\n(Use)" : $"{consumable.Name}\n(N/A)";
+			btn.Disabled = !usable;
+			btn.TooltipText = consumable.Description;
+			btn.Pressed += () =>
+			{
+				consumable.Use(_gameState);
+				_gameState.HeldConsumables.Remove(consumable);
+				GD.Print($"[HUD] Used consumable: {consumable.Name}");
+				RefreshLabels();
+			};
+			row.AddChild(btn);
+		}
+
+		var peekedLabel = GetNodeOrNull<Label>("PeekedNumberLabel");
+		if (peekedLabel != null)
+		{
+			if (_gameState.PeekedNextNumber.HasValue)
+			{
+				int n = _gameState.PeekedNextNumber.Value;
+				string colorDesc = n == 0 ? "Green" : (WheelData.IsRed(n) ? "Red" : "Black");
+				peekedLabel.Visible = true;
+				peekedLabel.Text = $"🔒 Next Spin Locked: {n} ({colorDesc})";
+			}
+			else
+			{
+				peekedLabel.Visible = false;
 			}
 		}
 	}

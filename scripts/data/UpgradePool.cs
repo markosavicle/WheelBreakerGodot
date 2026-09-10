@@ -24,5 +24,20 @@ public static class UpgradePool
 			
 		new UpgradeDefinition("pit_boss_bribe", "Pit Boss Bribe", "Lowers shop reroll costs by $1 (min $1)", 30,
 			gs => gs.RerollCostDiscount += 1),
+			
+		new UpgradeDefinition("tip_sheet_straight", "Straight Tip Sheet", "+2.0x payout for Straight (single number) bets", 35,
+			gs => gs.AddCategoryBonus(BetCategory.Straight, 2.0f)),
+
+		new UpgradeDefinition("tip_sheet_color", "Color Tip Sheet", "+0.15x payout for Red/Black bets", 20,
+			gs => gs.AddCategoryBonus(BetCategory.Color, 0.15f)),
+
+		new UpgradeDefinition("tip_sheet_parity", "Parity Tip Sheet", "+0.15x payout for Odd/Even bets", 20,
+			gs => gs.AddCategoryBonus(BetCategory.Parity, 0.15f)),
+
+		new UpgradeDefinition("tip_sheet_highlow", "High/Low Tip Sheet", "+0.15x payout for 1-18/19-36 bets", 20,
+			gs => gs.AddCategoryBonus(BetCategory.HighLow, 0.15f)),
+
+		new UpgradeDefinition("tip_sheet_dozens", "Dozens Tip Sheet", "+0.3x payout for Dozen bets", 22,
+			gs => gs.AddCategoryBonus(BetCategory.Dozen, 0.3f)),	
 	};
 }

@@ -26,6 +26,14 @@ public partial class SpinManager : Node
 			_gameState.DebugForcedWinningNumber = null; // consume it once
 			GD.Print($"[SpinManager] 🛠 DEBUG FORCED winning number to: {winningNumber}");
 		}
+		
+		else if (_gameState.PeekedNextNumber.HasValue)
+		{
+			winningNumber = _gameState.PeekedNextNumber.Value;
+			_gameState.PeekedNextNumber = null;
+			GD.Print($"[SpinManager] Marked Card guarantee consumed: {winningNumber}");
+		}
+		
 		else
 		{
 			var boss = _gameState.ActiveBoss;
@@ -102,6 +110,9 @@ public partial class SpinManager : Node
 			if (charm.OnSpinResolvedBonusScore != null)
 				total += charm.OnSpinResolvedBonusScore(_gameState, winningNumber);
 		}
+		
+		if (boss?.ModifyFinalSpinScore != null)
+			total = boss.ModifyFinalSpinScore(_gameState, _gameState.ActiveBets, total);
 
 		return total;
 	}

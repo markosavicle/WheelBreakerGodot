@@ -280,7 +280,7 @@ public partial class BettingTable : Control
 		}
 		else
 		{
-			float payout = WheelData.GetBasePayout(type);
+			float payout = WheelData.GetBasePayout(type) + _gameState.GetCategoryBonus(type);
 			var bet = new Bet(type, numbers, DefaultChipsPerClick, payout);
 			_gameState.ActiveBets.Add(bet);
 			_buttonBets[btn] = bet;
@@ -353,6 +353,13 @@ public partial class BettingTable : Control
 
 	public void RepeatLastBets()
 	{
+		
+		 if (_gameState.ActiveBoss?.BlocksRepeatBet == true)
+		{
+			GD.Print($"[BettingTable] Repeat Last Bet disabled — {_gameState.ActiveBoss.Name}.");
+			return;
+		}
+	
 		foreach (var bet in _gameState.ActiveBets)
 			_gameState.ChipsRemainingThisSpin += bet.ChipsWagered;
 
@@ -445,8 +452,8 @@ public partial class BettingTable : Control
 			Button btn = kvp.Key;
 			BetType type = kvp.Value;
 			
-			string tooltip = $"Type: {type}\nBase Payout: {WheelData.GetBasePayout(type)}x";
-
+			string tooltip = $"Type: {type}\nBase Payout: {WheelData.GetBasePayout(type) + _gameState.GetCategoryBonus(type)}x";
+			
 			if (IsBetTypeBlockedByBoss(type))
 			{
 				tooltip += $"\n\n[BLOCKED] by {_gameState.ActiveBoss?.Name}";

@@ -102,6 +102,15 @@ offset_bottom = 43.0
 text = "Charms: 0/5"
 horizontal_alignment = 2
 
+[node name="PeekedNumberLabel" type="Label" parent="HUD" unique_id=1691355236]
+layout_mode = 0
+offset_left = 1100.0
+offset_top = 46.0
+offset_right = 1260.0
+offset_bottom = 69.0
+text = "Charms: 0/5"
+horizontal_alignment = 2
+
 [node name="SpinButton" type="Button" parent="HUD" unique_id=1767233103]
 layout_mode = 0
 offset_left = 618.0
@@ -117,6 +126,13 @@ offset_top = 658.0
 offset_right = 115.0
 offset_bottom = 693.0
 text = "Inventory"
+
+[node name="ConsumablesRow" type="HBoxContainer" parent="HUD" unique_id=1956234086]
+layout_mode = 0
+offset_left = 1056.0
+offset_top = 498.0
+offset_right = 1096.0
+offset_bottom = 538.0
 
 [node name="OverlayLayer" type="CanvasLayer" parent="HUD" unique_id=683710514]
 
