@@ -33,7 +33,7 @@ scripts/
 │   ├── BossDefinitions.cs / BossPool.cs
 │   ├── UpgradeDefinition.cs / UpgradePool.cs
 │   ├── ConsumableDefinition.cs / ConsumablePool.cs
-│   └── IShopOffer.cs    # Common interface so the shop can roll any offer type
+│   └── IShopOffer.cs    # Common interface for everything the shop can sell
 ├── gameplay/
 │   ├── SpinManager.cs   # Resolves a spin and calculates its score
 │   ├── BettingTable.cs  # Bet placement, hold-to-bet, repeat/clear bets
@@ -49,7 +49,7 @@ Key design decisions:
 - **Data-driven modifiers via optional hooks.** Charms and bosses are plain data objects that expose optional `Func<>` hooks (`ModifyWinningNumber`, `ModifyBetScore`, `ModifyChipsPerSpin`, `ModifyFinalSpinScore`, ...). A `null` hook is a no-op, so each item wires up only the moment it cares about, and new content is added in the pools without touching the core loop.
 - **Clear resolution order.** Debug override → consumable guarantee → RNG → boss rigging → charm effects. This keeps interactions between stacked modifiers predictable.
 - **Pure scoring function.** `CalculateScoreForNumber` has no side effects, so it can be evaluated multiple times — e.g. when a boss spins two balls and the game picks the worse result for the player.
-- **Shared shop interface.** Upgrades and charms both implement `IShopOffer`, so the shop draws from a single pool without type-specific logic.
+- **Shared shop interface.** Upgrades, charms and consumables all implement `IShopOffer` (id, name, description, cost), so the shop keeps its stock in a single `List<IShopOffer>`. Each shop rolls 2 upgrades, 2 charms (excluding ones you already own) and 1 consumable.
 
 ## Running
 
